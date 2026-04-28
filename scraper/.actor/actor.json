@@ -1,0 +1,11 @@
+{
+  "actorSpecification": 1,
+  "name": "tech-job-market-scraper",
+  "title": "Tech Job Market Scraper",
+  "description": "Scrapes job postings from Greenhouse, Lever, and Ashby ATS platforms and writes them to Supabase.",
+  "version": "0.1",
+  "buildTag": "latest",
+  "dockerfile": "../Dockerfile",
+  "readme": "../README.md",
+  "input": "./input_schema.json"
+}
