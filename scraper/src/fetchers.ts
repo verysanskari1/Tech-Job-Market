@@ -57,22 +57,39 @@ export async function fetchAshby(handle: string, proxyUrl?: string): Promise<Fet
   }
   if (!res.ok) throw new Error(`Ashby ${handle}: HTTP ${res.status}`);
 
-  const data = await res.json() as {
-    jobPostings: Array<{
-      id: string;
-      title: string;
-      departmentName?: string;
-      locationName?: string;
-      isRemote?: boolean;
-      publishedDate?: string;
-    }>;
-  };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const data = await res.json() as any;
 
-  return (data.jobPostings ?? []).map(job => ({
-    ats_role_id: job.id,
-    title_raw: job.title,
-    department_raw: job.departmentName ?? null,
-    location: job.isRemote ? 'Remote' : (job.locationName ?? null),
-    posted_at: job.publishedDate ?? null,
-  }));
+  // Log top-level keys on first call to catch future schema changes
+  if (handle === 'openai') {
+    const keys = Object.keys(data);
+    const firstJob = (data.jobs ?? data.jobPostings ?? [])[0];
+    console.log(`[Ashby debug] top-level keys: ${keys}`);
+    if (firstJob) console.log(`[Ashby debug] first job keys: ${Object.keys(firstJob)}`);
+  }
+
+  const jobs: Array<{
+    id?: string;
+    title: string;
+    department?: string;
+    departmentName?: string;
+    location?: string;
+    locationName?: string;
+    isRemote?: boolean;
+    publishedAt?: string;
+    publishedDate?: string;
+    jobUrl?: string;
+  }> = data.jobs ?? data.jobPostings ?? [];
+
+  return jobs.map(job => {
+    // Extract ID from jobUrl if the id field is missing: .../handle/UUID
+    const id = job.id ?? job.jobUrl?.split('/').pop() ?? '';
+    return {
+      ats_role_id: id,
+      title_raw: job.title,
+      department_raw: job.department ?? job.departmentName ?? null,
+      location: job.isRemote ? 'Remote' : (job.location ?? job.locationName ?? null),
+      posted_at: job.publishedAt ?? job.publishedDate ?? null,
+    };
+  });
 }
