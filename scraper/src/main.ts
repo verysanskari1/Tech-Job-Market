@@ -19,6 +19,12 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 const capturedAt = new Date().toISOString();
 
+// Ashby blocks all cloud IPs — route through Apify residential proxy.
+const proxyConfiguration = await Actor.createProxyConfiguration({ groups: ['RESIDENTIAL'] })
+  .catch(() => Actor.createProxyConfiguration().catch(() => null));
+const ashbyProxyUrl = proxyConfiguration ? await proxyConfiguration.newUrl() : undefined;
+if (!ashbyProxyUrl) log.warning('No proxy available — Ashby companies will fail.');
+
 // ------------------------------------------------------------------
 // Load companies
 // ------------------------------------------------------------------
@@ -41,7 +47,7 @@ for (const company of companies as Company[]) {
   try {
     if (company.ats === 'greenhouse') fetched = await fetchGreenhouse(company.ats_handle);
     else if (company.ats === 'lever')  fetched = await fetchLever(company.ats_handle);
-    else if (company.ats === 'ashby')  fetched = await fetchAshby(company.ats_handle);
+    else if (company.ats === 'ashby')  fetched = await fetchAshby(company.ats_handle, ashbyProxyUrl);
     else { log.warning(`[${company.name}] Unknown ATS "${company.ats}" — skipping`); continue; }
   } catch (err) {
     log.error(`[${company.name}] Fetch failed: ${(err as Error).message}`);

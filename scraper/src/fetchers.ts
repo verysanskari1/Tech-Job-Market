@@ -45,9 +45,16 @@ export async function fetchLever(handle: string): Promise<FetchedRole[]> {
   }));
 }
 
-export async function fetchAshby(handle: string): Promise<FetchedRole[]> {
+export async function fetchAshby(handle: string, proxyUrl?: string): Promise<FetchedRole[]> {
   const url = `https://api.ashbyhq.com/posting-api/job-board/${handle}`;
-  const res = await fetch(url);
+
+  let res: Response;
+  if (proxyUrl) {
+    const { fetch: proxyFetch, ProxyAgent } = await import('undici');
+    res = await proxyFetch(url, { dispatcher: new ProxyAgent(proxyUrl) }) as unknown as Response;
+  } else {
+    res = await fetch(url);
+  }
   if (!res.ok) throw new Error(`Ashby ${handle}: HTTP ${res.status}`);
 
   const data = await res.json() as {
