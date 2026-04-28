@@ -46,30 +46,26 @@ export async function fetchLever(handle: string): Promise<FetchedRole[]> {
 }
 
 export async function fetchAshby(handle: string): Promise<FetchedRole[]> {
-  const url = 'https://api.ashbyhq.com/posting-api/job-postings';
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ organizationHostedJobsPageName: handle }),
-  });
+  const url = `https://api.ashbyhq.com/posting-api/job-board/${handle}`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error(`Ashby ${handle}: HTTP ${res.status}`);
 
   const data = await res.json() as {
-    results: Array<{
+    jobPostings: Array<{
       id: string;
       title: string;
       departmentName?: string;
       locationName?: string;
       isRemote?: boolean;
-      publishedAt?: string;
+      publishedDate?: string;
     }>;
   };
 
-  return (data.results ?? []).map(job => ({
+  return (data.jobPostings ?? []).map(job => ({
     ats_role_id: job.id,
     title_raw: job.title,
     department_raw: job.departmentName ?? null,
     location: job.isRemote ? 'Remote' : (job.locationName ?? null),
-    posted_at: job.publishedAt ?? null,
+    posted_at: job.publishedDate ?? null,
   }));
 }
