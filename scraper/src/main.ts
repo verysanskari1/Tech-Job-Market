@@ -20,9 +20,8 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const capturedAt = new Date().toISOString();
 
 // Ashby blocks all cloud IPs — route through Apify residential proxy.
-// Try datacenter proxy first (included in plan), fall back to residential
-const proxyConfiguration = await Actor.createProxyConfiguration({ groups: ['BUYPROXIES94952'] })
-  .catch(() => Actor.createProxyConfiguration({ groups: ['RESIDENTIAL'] }).catch(() => null));
+const proxyConfiguration = await Actor.createProxyConfiguration({ groups: ['RESIDENTIAL'] })
+  .catch(() => null);
 const ashbyProxyUrl = proxyConfiguration ? await proxyConfiguration.newUrl() : undefined;
 if (!ashbyProxyUrl) log.warning('No proxy available — Ashby companies will fail.');
 
