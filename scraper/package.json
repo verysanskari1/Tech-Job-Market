@@ -2,6 +2,7 @@
   "name": "tech-job-market-scraper",
   "version": "1.0.0",
   "description": "Apify actor that scrapes job postings from Greenhouse, Lever, and Ashby ATS platforms.",
+  "type": "module",
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc",
