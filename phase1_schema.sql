@@ -39,9 +39,17 @@ create table classified_roles (
   category      text not null check (category in (
                   'AI Engineer',
                   'ML/Research',
+                  'Security Engineer',
+                  'Frontend Engineer',
+                  'Backend Engineer',
+                  'Infrastructure Engineer',
+                  'Data Engineer',
+                  'Mobile Engineer',
+                  'Hardware Engineer',
                   'Forward Deployed Engineer',
                   'GTM Engineer',
-                  'Software Engineer',
+                  'QA/Test Engineer',
+                  'MTS',
                   'New Grad/Junior',
                   'Other'
                 )),

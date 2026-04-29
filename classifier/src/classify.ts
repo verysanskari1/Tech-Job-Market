@@ -15,6 +15,8 @@ const VALID_CATEGORIES = new Set<Category>([
   'Hardware Engineer',
   'Forward Deployed Engineer',
   'GTM Engineer',
+  'QA/Test Engineer',
+  'MTS',
   'New Grad/Junior',
   'Other',
 ]);
@@ -40,8 +42,10 @@ Category definitions (pick the most specific match):
 - "Hardware Engineer": Electrical engineering, mechanical engineering, firmware, embedded systems, PCB design, RF, avionics, robotics hardware, manufacturing engineering, aerodynamics, propulsion, Field Technical Specialist, Field Service Engineer — physical/hardware roles.
 - "Forward Deployed Engineer": Forward Deployed Engineer, Implementation Engineer, Deployment Engineer — customer-facing roles requiring coding.
 - "GTM Engineer": Solutions Engineer, Sales Engineer, Solutions Architect, Pre-Sales Engineer, Customer Success Engineer with engineering focus, Developer Advocate, Technical Evangelist, AI Evangelist, Developer Relations Engineer — roles focused on external developer/customer engagement with a technical component.
+- "QA/Test Engineer": Software Development Engineer in Test (SDET), QA Engineer, Quality Assurance Engineer, Test Automation Engineer, Software Test Engineer, Integration and Test Engineer — roles focused on testing and quality.
+- "MTS": Member of Technical Staff — use this when the title is literally "Member of Technical Staff", "MTS", or a numbered variant (MTS I, MTS II, Senior MTS) and no functional specialty is stated in the title or department.
 - "New Grad/Junior": Explicitly entry-level ENGINEERING roles only — New Grad SWE, Junior Engineer, Engineering Intern, University Hire for an engineering role. NOT sales, recruiting, or non-engineering new grads.
-- "Other": Non-engineering — Product Manager, Designer, Recruiter, Sales (AE/SDR/CSM), Finance, Legal, Operations, HR, Marketing, Technician, Quality Inspector, Logistics, Research Scientist in biology/chemistry/life sciences (non-software).
+- "Other": Non-engineering — Product Manager, Designer, Recruiter, Sales (AE/SDR/CSM), Finance, Legal, Operations, HR, Marketing, Technician, Quality Inspector, Logistics, Research Scientist in biology/chemistry/life sciences (non-software). Also defense/government software roles (Mission Software Engineer, Ground Software Engineer, Systems Software Engineer in aerospace/defense contexts).
 
 Edge cases:
 - Quantum Software Engineer → "Backend Engineer" (software role using quantum computing, not research)
@@ -50,6 +54,10 @@ Edge cases:
 - Applied Scientist / Research Scientist with ML/AI focus → "ML/Research"
 - Applied AI Architect for a specific vertical (Commercial, Public Sector, Startups) → "GTM Engineer" (customer-facing)
 - Biological / Chemical / Materials Research Scientist → "Other" (not software engineering)
+- "Frontend" in aerospace/defense titles (e.g. "Mission Software Engineer, Air Vehicle Autonomy, Frontend") → "Other" — "frontend" here is avionics jargon, not web frontend
+- Mission Software Engineer / Ground Software Engineer / Systems Software Engineer at a defense or aerospace company → "Other"
+- Member of Technical Staff / MTS (no functional specialty in title or department) → "MTS"
+- Integration and Test Engineer / Software Test Engineer / QA Engineer / SDET → "QA/Test Engineer"
 
 Seniority definitions:
 - "Junior": 0-2 years. Titles: Junior, Associate, Entry Level, New Grad, University Hire, "I" suffix, Intern.
