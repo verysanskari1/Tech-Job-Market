@@ -6,9 +6,15 @@ export const MODEL = 'claude-haiku-4-5';
 const VALID_CATEGORIES = new Set<Category>([
   'AI Engineer',
   'ML/Research',
+  'Security Engineer',
+  'Frontend Engineer',
+  'Backend Engineer',
+  'Infrastructure Engineer',
+  'Data Engineer',
+  'Mobile Engineer',
+  'Hardware Engineer',
   'Forward Deployed Engineer',
   'GTM Engineer',
-  'Software Engineer',
   'New Grad/Junior',
   'Other',
 ]);
@@ -18,24 +24,30 @@ const VALID_SENIORITIES = new Set<Seniority>(['Junior', 'Mid', 'Senior', 'Staff+
 const SYSTEM_PROMPT = `You classify tech job postings for a hiring market index.
 
 Given a job title and optional department, respond with JSON containing exactly three fields:
-- "category": one of "AI Engineer", "ML/Research", "Forward Deployed Engineer", "GTM Engineer", "Software Engineer", "New Grad/Junior", "Other"
+- "category": one of the categories listed below
 - "seniority": one of "Junior", "Mid", "Senior", "Staff+"
 - "confidence": float between 0.0 and 1.0
 
-Category definitions:
-- "AI Engineer": Builds AI/ML products or infrastructure — LLM integration, AI platform, model deployment, AI infrastructure, prompt engineering roles. Must involve building, not just researching.
-- "ML/Research": Research Scientists, ML Researchers, Applied Researchers, Data Scientists with a research focus. Pure research, not product-building.
-- "Forward Deployed Engineer": Forward Deployed Engineer, Implementation Engineer, Deployment Engineer, Technical Implementation — customer-facing roles requiring coding.
-- "GTM Engineer": Solutions Engineer, Sales Engineer, Solutions Architect, Pre-Sales Engineer, Customer Success Engineer, Technical Account Manager with engineering focus.
-- "Software Engineer": All other engineering — backend, frontend, fullstack, infrastructure, platform, mobile, data engineering, DevOps, SRE, security engineering, QA engineering.
-- "New Grad/Junior": Explicitly entry-level roles — New Grad, University Hire, Intern, Associate Engineer at a clearly junior level.
-- "Other": Non-engineering — Product Manager, Designer, Recruiter, Sales (AE/SDR/CSM), Finance, Legal, Operations, HR, Marketing.
+Category definitions (pick the most specific match):
+- "AI Engineer": Builds AI/ML products or infrastructure — LLM integration, AI platform, model deployment, prompt engineering. Must involve building, not pure research.
+- "ML/Research": Research Scientists, ML Researchers, Applied Researchers, Data Scientists with a research focus.
+- "Security Engineer": Application security, cryptography, endpoint security, InfoSec engineering, penetration testing, security software engineering.
+- "Frontend Engineer": UI, React, Vue, Angular, CSS, web, design systems, browser-side engineering.
+- "Backend Engineer": Server-side, API, databases, distributed systems, fullstack (when both front and back are mentioned equally default here).
+- "Infrastructure Engineer": DevOps, SRE, Platform, Cloud, Kubernetes, networking, reliability, CI/CD.
+- "Data Engineer": Data pipelines, ETL, analytics engineering, data warehouse, data platform.
+- "Mobile Engineer": iOS, Android, React Native, Flutter, mobile applications.
+- "Hardware Engineer": Electrical engineering, mechanical engineering, firmware, embedded systems, PCB design, RF, avionics, robotics hardware, manufacturing engineering, aerodynamics, propulsion — physical/hardware roles.
+- "Forward Deployed Engineer": Forward Deployed Engineer, Implementation Engineer, Deployment Engineer — customer-facing roles requiring coding.
+- "GTM Engineer": Solutions Engineer, Sales Engineer, Solutions Architect, Pre-Sales Engineer, Customer Success Engineer with engineering focus.
+- "New Grad/Junior": Explicitly entry-level ENGINEERING roles only — New Grad SWE, Junior Engineer, Engineering Intern, University Hire for an engineering role. NOT sales, recruiting, or non-engineering new grads.
+- "Other": Non-engineering — Product Manager, Designer, Recruiter, Sales (AE/SDR/CSM), Finance, Legal, Operations, HR, Marketing, Technician, Quality Inspector, Logistics.
 
 Seniority definitions:
-- "Junior": 0-2 years experience. Titles: Junior, Associate, Entry Level, New Grad, University Hire, "I" suffix (Engineer I), Intern.
+- "Junior": 0-2 years. Titles: Junior, Associate, Entry Level, New Grad, University Hire, "I" suffix, Intern.
 - "Mid": 3-5 years, no explicit seniority indicator, or "Engineer II" / "II" suffix.
-- "Senior": 6+ years. Titles: Senior, Sr., "III" suffix, Lead (when used as seniority, not management).
-- "Staff+": Highly experienced IC or manager. Titles: Staff, Principal, Distinguished, Fellow, L6+, Director, VP, Head of.
+- "Senior": 6+ years. Titles: Senior, Sr., "III" suffix, Lead (used as seniority).
+- "Staff+": Titles: Staff, Principal, Distinguished, Fellow, L6+, Director, VP, Head of, Chief Engineer.
 
 Respond only with a raw JSON object — no markdown, no code fences, no explanation.`;
 

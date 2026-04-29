@@ -1,9 +1,15 @@
 export type Category =
   | 'AI Engineer'
   | 'ML/Research'
+  | 'Security Engineer'
+  | 'Frontend Engineer'
+  | 'Backend Engineer'
+  | 'Infrastructure Engineer'
+  | 'Data Engineer'
+  | 'Mobile Engineer'
+  | 'Hardware Engineer'
   | 'Forward Deployed Engineer'
   | 'GTM Engineer'
-  | 'Software Engineer'
   | 'New Grad/Junior'
   | 'Other';
 

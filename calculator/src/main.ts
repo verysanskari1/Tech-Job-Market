@@ -76,6 +76,9 @@ for (const role of roles) {
 
   if (!cr) continue;
 
+  // Exclude non-engineering roles from index math
+  if (cr.category === 'Other') continue;
+
   snap.total_open++;
   snap.by_category[cr.category] = (snap.by_category[cr.category] ?? 0) + 1;
   snap.by_seniority[cr.seniority] = (snap.by_seniority[cr.seniority] ?? 0) + 1;
