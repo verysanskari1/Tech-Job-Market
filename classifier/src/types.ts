@@ -10,6 +10,8 @@ export type Category =
   | 'Hardware Engineer'
   | 'Forward Deployed Engineer'
   | 'GTM Engineer'
+  | 'QA/Test Engineer'
+  | 'MTS'
   | 'New Grad/Junior'
   | 'Other';
 
