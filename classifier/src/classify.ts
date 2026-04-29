@@ -37,11 +37,19 @@ Category definitions (pick the most specific match):
 - "Infrastructure Engineer": DevOps, SRE, Platform, Cloud, Kubernetes, networking, reliability, CI/CD.
 - "Data Engineer": Data pipelines, ETL, analytics engineering, data warehouse, data platform.
 - "Mobile Engineer": iOS, Android, React Native, Flutter, mobile applications.
-- "Hardware Engineer": Electrical engineering, mechanical engineering, firmware, embedded systems, PCB design, RF, avionics, robotics hardware, manufacturing engineering, aerodynamics, propulsion — physical/hardware roles.
+- "Hardware Engineer": Electrical engineering, mechanical engineering, firmware, embedded systems, PCB design, RF, avionics, robotics hardware, manufacturing engineering, aerodynamics, propulsion, Field Technical Specialist, Field Service Engineer — physical/hardware roles.
 - "Forward Deployed Engineer": Forward Deployed Engineer, Implementation Engineer, Deployment Engineer — customer-facing roles requiring coding.
-- "GTM Engineer": Solutions Engineer, Sales Engineer, Solutions Architect, Pre-Sales Engineer, Customer Success Engineer with engineering focus.
+- "GTM Engineer": Solutions Engineer, Sales Engineer, Solutions Architect, Pre-Sales Engineer, Customer Success Engineer with engineering focus, Developer Advocate, Technical Evangelist, AI Evangelist, Developer Relations Engineer — roles focused on external developer/customer engagement with a technical component.
 - "New Grad/Junior": Explicitly entry-level ENGINEERING roles only — New Grad SWE, Junior Engineer, Engineering Intern, University Hire for an engineering role. NOT sales, recruiting, or non-engineering new grads.
-- "Other": Non-engineering — Product Manager, Designer, Recruiter, Sales (AE/SDR/CSM), Finance, Legal, Operations, HR, Marketing, Technician, Quality Inspector, Logistics.
+- "Other": Non-engineering — Product Manager, Designer, Recruiter, Sales (AE/SDR/CSM), Finance, Legal, Operations, HR, Marketing, Technician, Quality Inspector, Logistics, Research Scientist in biology/chemistry/life sciences (non-software).
+
+Edge cases:
+- Quantum Software Engineer → "Backend Engineer" (software role using quantum computing, not research)
+- Quantum Research Scientist / Quantum Algorithm Researcher → "ML/Research"
+- Enterprise Applications Engineer / Business Applications Engineer → "Backend Engineer"
+- Applied Scientist / Research Scientist with ML/AI focus → "ML/Research"
+- Applied AI Architect for a specific vertical (Commercial, Public Sector, Startups) → "GTM Engineer" (customer-facing)
+- Biological / Chemical / Materials Research Scientist → "Other" (not software engineering)
 
 Seniority definitions:
 - "Junior": 0-2 years. Titles: Junior, Associate, Entry Level, New Grad, University Hire, "I" suffix, Intern.
