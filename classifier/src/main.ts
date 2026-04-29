@@ -25,7 +25,7 @@ const input = await Actor.getInput<{
 const supabaseUrl = input?.supabaseUrl ?? process.env.SUPABASE_URL ?? '';
 const supabaseKey = input?.supabaseKey ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 const BATCH_SIZE = input?.batchSize ?? 200;
-const CONCURRENCY = input?.concurrency ?? 8;
+const CONCURRENCY = input?.concurrency ?? 3;
 const LOW_CONFIDENCE_THRESHOLD = 0.70;
 
 if (!supabaseUrl || !supabaseKey) {

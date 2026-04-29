@@ -37,7 +37,7 @@ Seniority definitions:
 - "Senior": 6+ years. Titles: Senior, Sr., "III" suffix, Lead (when used as seniority, not management).
 - "Staff+": Highly experienced IC or manager. Titles: Staff, Principal, Distinguished, Fellow, L6+, Director, VP, Head of.
 
-Respond only with valid JSON — no explanation, no markdown.`;
+Respond only with a raw JSON object — no markdown, no code fences, no explanation.`;
 
 let client: Anthropic | null = null;
 
@@ -46,11 +46,36 @@ function getClient(): Anthropic {
   return client;
 }
 
+async function callWithRetry(
+  fn: () => Promise<Anthropic.Message>,
+  maxRetries = 4,
+): Promise<Anthropic.Message> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const status = (err as { status?: number }).status;
+      if (status === 429 && attempt < maxRetries) {
+        const delayMs = Math.pow(2, attempt) * 2000; // 2s, 4s, 8s, 16s
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error('Max retries exceeded');
+}
+
+function stripFences(text: string): string {
+  const match = text.match(/```(?:json)?\s*([\s\S]*?)```/s);
+  return match ? match[1].trim() : text;
+}
+
 export async function classifyRole(
   titleRaw: string,
   departmentRaw: string | null,
 ): Promise<Classification> {
-  const response = await getClient().messages.create({
+  const response = await callWithRetry(() => getClient().messages.create({
     model: MODEL,
     max_tokens: 128,
     system: [
@@ -66,9 +91,10 @@ export async function classifyRole(
         content: JSON.stringify({ title: titleRaw, department: departmentRaw }),
       },
     ],
-  });
+  }));
 
-  const text = response.content[0]?.type === 'text' ? response.content[0].text.trim() : '{}';
+  const raw = response.content[0]?.type === 'text' ? response.content[0].text.trim() : '{}';
+  const text = stripFences(raw);
 
   let parsed: Record<string, unknown>;
   try {
