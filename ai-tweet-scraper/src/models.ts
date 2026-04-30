@@ -44,4 +44,16 @@ export const AI_MODELS: AiModel[] = [
     color: '#FCF283',
     searchQuery: '"Grok AI" OR "xAI Grok" OR "@grok"',
   },
+  {
+    slug: 'deepseek',
+    displayName: 'DeepSeek',
+    color: '#F87171',
+    searchQuery: '"DeepSeek" OR "DeepSeek-R1" OR "deepseek.com" OR "DeepSeek-V3"',
+  },
+  {
+    slug: 'kimi',
+    displayName: 'Kimi / Moonshot',
+    color: '#34D399',
+    searchQuery: '"Kimi AI" OR "Moonshot AI" OR "kimi.ai" OR "MoonshotAI"',
+  },
 ];

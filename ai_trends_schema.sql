@@ -43,4 +43,6 @@ insert into ai_models (slug, display_name, color, launch_date) values
   ('google',    'Google / Gemini',    '#4285F4', '2023-02-06'),
   ('meta',      'Meta / Llama',       '#3B82F6', '2023-02-24'),
   ('mistral',   'Mistral AI',         '#FABD83', '2023-09-27'),
-  ('grok',      'xAI / Grok',         '#FCF283', '2023-11-04');
+  ('grok',      'xAI / Grok',         '#FCF283', '2023-11-04'),
+  ('deepseek',  'DeepSeek',           '#F87171', '2023-11-02'),
+  ('kimi',      'Kimi / Moonshot',    '#34D399', '2023-10-09');
