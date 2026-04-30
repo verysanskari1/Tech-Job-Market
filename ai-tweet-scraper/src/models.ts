@@ -56,4 +56,10 @@ export const AI_MODELS: AiModel[] = [
     color: '#34D399',
     searchQuery: '"Kimi AI" OR "Moonshot AI" OR "kimi.ai" OR "MoonshotAI"',
   },
+  {
+    slug: 'qwen',
+    displayName: 'Qwen / Alibaba',
+    color: '#FB923C',
+    searchQuery: '"Qwen" OR "Qwen2" OR "Alibaba AI" OR "QwQ" OR "qwen.ai"',
+  },
 ];
