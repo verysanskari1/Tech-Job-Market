@@ -36,19 +36,28 @@ if (indexesError) throw new Error(`Failed to load indexes: ${indexesError.messag
 log.info(`Loaded ${indexes.length} indexes`);
 
 // ------------------------------------------------------------------
-// Load all open classified roles in one query
+// Load all open classified roles, paginating past Supabase's 1000-row limit
 // ------------------------------------------------------------------
 log.info('Loading open classified roles...');
 
-const { data: roles, error: rolesError } = await supabase
-  .from('raw_roles')
-  .select(`
-    company_id,
-    classified_roles!inner(category, seniority)
-  `)
-  .is('removed_at', null);
+async function fetchAllRows<T>(queryFn: () => any, pageSize = 1000): Promise<T[]> {
+  const results: T[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await queryFn().range(from, from + pageSize - 1);
+    if (error) throw new Error((error as { message: string }).message);
+    if (!data || (data as T[]).length === 0) break;
+    results.push(...(data as T[]));
+    if ((data as T[]).length < pageSize) break;
+    from += pageSize;
+  }
+  return results;
+}
 
-if (rolesError) throw new Error(`Failed to load roles: ${rolesError.message}`);
+const roles = await fetchAllRows(
+  () => supabase.from('raw_roles').select('company_id, classified_roles!inner(category, seniority)').is('removed_at', null),
+);
+
 log.info(`${roles.length} open classified roles loaded`);
 
 // ------------------------------------------------------------------
