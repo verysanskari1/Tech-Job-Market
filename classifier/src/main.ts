@@ -37,33 +37,47 @@ if (!process.env.ANTHROPIC_API_KEY) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Fetch all rows from a table, paginating past Supabase's 1000-row default limit.
+async function fetchAllRows<T>(
+  query: () => ReturnType<typeof supabase.from>,
+  pageSize = 1000,
+): Promise<T[]> {
+  const results: T[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await (query() as any).range(from, from + pageSize - 1);
+    if (error) throw new Error(error.message);
+    if (!data || data.length === 0) break;
+    results.push(...data);
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+  return results;
+}
+
 // ------------------------------------------------------------------
 // Load unclassified raw_roles
 // Two-query approach: fetch open roles, fetch classified IDs, diff in JS.
 // ------------------------------------------------------------------
 log.info('Fetching all open raw_roles...');
-const { data: openRoles, error: rolesError } = await supabase
-  .from('raw_roles')
-  .select('id, title_raw, department_raw')
-  .is('removed_at', null);
-
-if (rolesError) throw new Error(`Failed to load raw_roles: ${rolesError.message}`);
+const openRoles = await fetchAllRows<{ id: string; title_raw: string; department_raw: string | null }>(
+  () => supabase.from('raw_roles').select('id, title_raw, department_raw').is('removed_at', null),
+);
+log.info(`Fetched ${openRoles.length} open raw_roles`);
 
 log.info('Fetching already-classified role IDs...');
-const { data: classifiedRows, error: classifiedError } = await supabase
-  .from('classified_roles')
-  .select('raw_role_id');
+const classifiedRows = await fetchAllRows<{ raw_role_id: string }>(
+  () => supabase.from('classified_roles').select('raw_role_id'),
+);
 
-if (classifiedError) throw new Error(`Failed to load classified_roles: ${classifiedError.message}`);
+const classifiedSet = new Set(classifiedRows.map(r => r.raw_role_id));
 
-const classifiedSet = new Set((classifiedRows ?? []).map(r => r.raw_role_id as string));
-
-const unclassified: UnclassifiedRole[] = (openRoles ?? [])
-  .filter(r => !classifiedSet.has(r.id as string))
+const unclassified: UnclassifiedRole[] = openRoles
+  .filter(r => !classifiedSet.has(r.id))
   .map(r => ({
-    id: r.id as string,
-    title_raw: r.title_raw as string,
-    department_raw: r.department_raw as string | null,
+    id: r.id,
+    title_raw: r.title_raw,
+    department_raw: r.department_raw,
   }));
 
 log.info(`${unclassified.length} roles to classify (${classifiedSet.size} already done)`);
