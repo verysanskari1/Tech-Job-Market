@@ -108,20 +108,24 @@ async function processRole(role: UnclassifiedRole): Promise<ClassifiedRoleRow | 
   }
 
   // Guard against invalid categories and seniorities (e.g. stale cache entries)
-  const validCategories = ['AI Engineer','ML/Research','Security Engineer','Frontend Engineer',
+  const validCategories: string[] = ['AI Engineer','ML/Research','Security Engineer','Frontend Engineer',
     'Backend Engineer','Infrastructure Engineer','Data Engineer','Mobile Engineer',
     'Hardware Engineer','Forward Deployed Engineer','GTM Engineer','QA/Test Engineer',
     'MTS','New Grad/Junior','Other'];
   const validSeniorities: Seniority[] = ['Junior', 'Mid', 'Senior', 'Staff+'];
 
-  const category = validCategories.includes(result.category) ? result.category : 'Other';
+  const rawCategory = String(result.category ?? '').trim();
+  if (!validCategories.includes(rawCategory)) {
+    log.warning(`Invalid category "${rawCategory}" for "${role.title_raw}" — remapping to Other`);
+  }
+  const category = (validCategories.includes(rawCategory) ? rawCategory : 'Other') as import('./types.js').Category;
   const seniority: Seniority = validSeniorities.includes(result.seniority)
     ? result.seniority
     : 'Mid';
 
   return {
     raw_role_id: role.id,
-    category: category as import('./types.js').Category,
+    category,
     seniority,
     confidence: result.confidence,
     model_version: MODEL,
