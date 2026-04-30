@@ -26,8 +26,8 @@ const config: Config = {
         'surface-border': '#2E2E3A',
       },
       fontFamily: {
-        sans: ['Satoshi', 'system-ui', 'sans-serif'],
-        serif: ['Newsreader', 'Georgia', 'serif'],
+        sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
+        serif: ['var(--font-newsreader)', 'Georgia', 'serif'],
       },
     },
   },

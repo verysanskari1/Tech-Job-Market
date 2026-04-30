@@ -3,7 +3,7 @@ import type { IndexValue } from '@/types';
 const INDEX_ORDER = ['Composite', 'AI 50', 'Early but Hot', 'Public Tech', 'India-HQ'];
 
 function ChangeChip({ pct }: { pct: number | null }) {
-  if (pct == null) return <span className="text-white/30 text-sm font-sans">—</span>;
+  if (pct == null) return <span className="text-white/20 text-xs font-sans">Day 1 baseline</span>;
 
   const positive = pct >= 0;
   const arrow = positive ? '▲' : '▼';
