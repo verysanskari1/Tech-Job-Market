@@ -8,7 +8,7 @@ export async function getLatestIndexValues(): Promise<IndexValue[]> {
     .order('captured_at', { ascending: false })
     .limit(50);
 
-  if (error) throw error;
+  if (error) { console.error('getLatestIndexValues:', error.message); return []; }
 
   // Keep only the latest row per index
   const seen = new Set<string>();
@@ -48,7 +48,7 @@ export async function getCategoryBreakdown(): Promise<CategoryCount[]> {
     .select('by_category')
     .eq('captured_at', date);
 
-  if (error) throw error;
+  if (error) { console.error('getCategoryBreakdown:', error.message); return []; }
 
   const totals: Record<string, number> = {};
   for (const row of data ?? []) {
@@ -75,7 +75,7 @@ export async function getTopCompanies(limit = 20): Promise<CompanySnapshot[]> {
     .order('total_open', { ascending: false })
     .limit(limit);
 
-  if (error) throw error;
+  if (error) { console.error('getTopCompanies:', error.message); return []; }
 
   return (data ?? []).map(row => ({
     company_id: row.company_id as string,
