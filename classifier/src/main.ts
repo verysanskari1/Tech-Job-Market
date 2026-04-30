@@ -39,13 +39,13 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Fetch all rows from a table, paginating past Supabase's 1000-row default limit.
 async function fetchAllRows<T>(
-  query: () => ReturnType<typeof supabase.from>,
+  queryFn: () => { range: (from: number, to: number) => Promise<{ data: T[] | null; error: { message: string } | null }> },
   pageSize = 1000,
 ): Promise<T[]> {
   const results: T[] = [];
   let from = 0;
   while (true) {
-    const { data, error } = await (query() as any).range(from, from + pageSize - 1);
+    const { data, error } = await queryFn().range(from, from + pageSize - 1);
     if (error) throw new Error(error.message);
     if (!data || data.length === 0) break;
     results.push(...data);
