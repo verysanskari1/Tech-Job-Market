@@ -54,7 +54,9 @@ async function fetchAllRows<T>(queryFn: () => any, pageSize = 1000): Promise<T[]
   return results;
 }
 
-const roles = await fetchAllRows(
+type RawRoleWithClassified = { company_id: string; classified_roles: { category: string; seniority: string } | { category: string; seniority: string }[] };
+
+const roles = await fetchAllRows<RawRoleWithClassified>(
   () => supabase.from('raw_roles').select('company_id, classified_roles!inner(category, seniority)').is('removed_at', null),
 );
 
