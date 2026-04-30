@@ -1,6 +1,6 @@
 'use client';
 
-import { LineChart, Line, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, YAxis, ResponsiveContainer } from 'recharts';
 
 export default function Sparkline({ data, color = '#05C770' }: { data: number[]; color?: string }) {
   if (data.length < 2) {
@@ -15,13 +15,13 @@ export default function Sparkline({ data, color = '#05C770' }: { data: number[];
   return (
     <ResponsiveContainer width="100%" height={32}>
       <LineChart data={chartData} margin={{ top: 4, right: 0, bottom: 4, left: 0 }}>
+        <YAxis domain={domain} hide />
         <Line
           type="monotone"
           dataKey="v"
           stroke={color}
           strokeWidth={1.5}
           dot={false}
-          domain={domain}
         />
       </LineChart>
     </ResponsiveContainer>

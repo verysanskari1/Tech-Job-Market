@@ -1,7 +1,7 @@
 'use client';
 
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import type { CategoryCount } from '@/types';
+import type { CategoryCount, CompanySnapshot } from '@/types';
 
 const CATEGORY_COLORS: Record<string, string> = {
   'AI Engineer':              '#05C770',
@@ -20,30 +20,43 @@ const CATEGORY_COLORS: Record<string, string> = {
   'New Grad/Junior':          '#FCF283',
 };
 
-interface TooltipProps {
+interface CustomTooltipProps {
   active?: boolean;
-  payload?: { value: number; payload: CategoryCount }[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  payload?: any[];
+  companies: CompanySnapshot[];
 }
 
-function CustomTooltip({ active, payload }: TooltipProps) {
+function CustomTooltip({ active, payload, companies }: CustomTooltipProps) {
   if (!active || !payload?.length) return null;
-  const { category, count } = payload[0].payload;
+  const { category, count } = payload[0].payload as CategoryCount;
+  const topCos = companies
+    .filter(c => (c.by_category[category] ?? 0) > 0)
+    .sort((a, b) => (b.by_category[category] ?? 0) - (a.by_category[category] ?? 0))
+    .slice(0, 6);
   return (
-    <div className="bg-surface-raised border border-surface-border rounded-lg px-3 py-2 text-sm font-sans shadow-lg">
-      <p className="text-white font-medium">{category}</p>
-      <p className="text-white/60">{count.toLocaleString()} open roles</p>
-      <p className="text-white/30 text-xs mt-0.5">Click to filter companies</p>
+    <div className="bg-surface-raised border border-surface-border rounded-lg px-3 py-2.5 text-sm font-sans shadow-lg min-w-[200px]">
+      <p className="text-white font-medium mb-1">{category}</p>
+      <p className="text-white/50 text-xs mb-2">{count.toLocaleString()} open roles</p>
+      {topCos.map(co => (
+        <div key={co.company_id} className="flex items-center justify-between gap-4 py-0.5">
+          <span className="text-white/70 text-xs">{co.name}</span>
+          <span className="text-white/40 text-xs tabular-nums">{co.by_category[category]}</span>
+        </div>
+      ))}
+      <p className="text-white/20 text-xs mt-2 border-t border-surface-border pt-2">Click to filter companies</p>
     </div>
   );
 }
 
 interface Props {
   data: CategoryCount[];
+  companies: CompanySnapshot[];
   selectedCategory: string | null;
   onCategorySelect: (cat: string | null) => void;
 }
 
-export default function CategoryChart({ data, selectedCategory, onCategorySelect }: Props) {
+export default function CategoryChart({ data, companies, selectedCategory, onCategorySelect }: Props) {
   if (data.length === 0) {
     return (
       <div className="h-80 flex items-center justify-center text-white/30 text-sm font-sans">
@@ -80,7 +93,7 @@ export default function CategoryChart({ data, selectedCategory, onCategorySelect
           axisLine={false}
           tickLine={false}
         />
-        <Tooltip content={<CustomTooltip />} cursor={{ fill: '#ffffff06' }} />
+        <Tooltip content={(props) => <CustomTooltip {...props} companies={companies} />} cursor={{ fill: '#ffffff06' }} />
         <Bar dataKey="count" radius={[0, 3, 3, 0]} style={{ cursor: 'pointer' }}>
           {data.map(entry => {
             const isSelected = selectedCategory === entry.category;

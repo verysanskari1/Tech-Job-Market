@@ -70,10 +70,7 @@ export default function DashboardClient({ indexes, allCompanies }: Props) {
       {/* Index cards */}
       <section className="space-y-2">
         <p className="text-white/30 text-xs font-sans uppercase tracking-widest">Indexes</p>
-        <IndexCards indexes={indexes} />
-        <p className="text-white/20 text-xs font-sans">
-          Base = 1,000 on first snapshot · % change appears from day 2
-        </p>
+        <IndexCards indexes={indexes} allCompanies={allCompanies} />
       </section>
 
       {/* Chart + index filter */}
@@ -112,6 +109,7 @@ export default function DashboardClient({ indexes, allCompanies }: Props) {
         <div className="px-6 py-4">
           <CategoryChart
             data={categories}
+            companies={filteredCompanies}
             selectedCategory={selectedCategory}
             onCategorySelect={setSelectedCategory}
           />
