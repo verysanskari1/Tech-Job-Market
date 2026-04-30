@@ -18,7 +18,7 @@ export async function getLatestIndexValues(): Promise<IndexValue[]> {
     seen.add(row.index_id);
     result.push({
       index_id: row.index_id,
-      name: (row.indexes as { name: string } | null)?.name ?? row.index_id,
+      name: (row.indexes as unknown as { name: string } | null)?.name ?? row.index_id,
       value: Number(row.value),
       change_pct: row.change_pct != null ? Number(row.change_pct) : null,
       captured_at: row.captured_at,
@@ -79,7 +79,7 @@ export async function getTopCompanies(limit = 20): Promise<CompanySnapshot[]> {
 
   return (data ?? []).map(row => ({
     company_id: row.company_id as string,
-    name: (row.companies as { name: string } | null)?.name ?? '—',
+    name: (row.companies as unknown as { name: string } | null)?.name ?? '—',
     total_open: row.total_open as number,
     by_category: row.by_category as Record<string, number>,
   }));
