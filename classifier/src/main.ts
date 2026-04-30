@@ -38,18 +38,15 @@ if (!process.env.ANTHROPIC_API_KEY) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Fetch all rows from a table, paginating past Supabase's 1000-row default limit.
-async function fetchAllRows<T>(
-  queryFn: () => { range: (from: number, to: number) => Promise<{ data: T[] | null; error: { message: string } | null }> },
-  pageSize = 1000,
-): Promise<T[]> {
+async function fetchAllRows<T>(queryFn: () => any, pageSize = 1000): Promise<T[]> {
   const results: T[] = [];
   let from = 0;
   while (true) {
     const { data, error } = await queryFn().range(from, from + pageSize - 1);
-    if (error) throw new Error(error.message);
-    if (!data || data.length === 0) break;
-    results.push(...data);
-    if (data.length < pageSize) break;
+    if (error) throw new Error((error as { message: string }).message);
+    if (!data || (data as T[]).length === 0) break;
+    results.push(...(data as T[]));
+    if ((data as T[]).length < pageSize) break;
     from += pageSize;
   }
   return results;
