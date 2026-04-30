@@ -6,25 +6,28 @@ export async function getLatestIndexValues(): Promise<IndexValue[]> {
     .from('index_values_daily')
     .select('captured_at, index_id, value, change_pct, indexes(name)')
     .order('captured_at', { ascending: false })
-    .limit(50);
+    .limit(200);
 
   if (error) { console.error('getLatestIndexValues:', error.message); return []; }
 
-  // Keep only the latest row per index
-  const seen = new Set<string>();
-  const result: IndexValue[] = [];
+  // Build sparklines (last 30 days per index) and latest values
+  const sparklineMap: Record<string, number[]> = {};
+  const latestMap: Record<string, typeof data[0]> = {};
+
   for (const row of data ?? []) {
-    if (seen.has(row.index_id)) continue;
-    seen.add(row.index_id);
-    result.push({
-      index_id: row.index_id,
-      name: (row.indexes as unknown as { name: string } | null)?.name ?? row.index_id,
-      value: Number(row.value),
-      change_pct: row.change_pct != null ? Number(row.change_pct) : null,
-      captured_at: row.captured_at,
-    });
+    if (!latestMap[row.index_id]) latestMap[row.index_id] = row;
+    if (!sparklineMap[row.index_id]) sparklineMap[row.index_id] = [];
+    sparklineMap[row.index_id].unshift(Number(row.value)); // ascending order
   }
-  return result;
+
+  return Object.values(latestMap).map(row => ({
+    index_id: row.index_id,
+    name: (row.indexes as unknown as { name: string } | null)?.name ?? row.index_id,
+    value: Number(row.value),
+    change_pct: row.change_pct != null ? Number(row.change_pct) : null,
+    captured_at: row.captured_at,
+    sparkline: sparklineMap[row.index_id] ?? [],
+  }));
 }
 
 async function getLatestSnapshotDate(): Promise<string | null> {
@@ -39,6 +42,32 @@ async function getLatestSnapshotDate(): Promise<string | null> {
   return data.captured_at as string;
 }
 
+export async function getTopCompanies(limit = 20): Promise<CompanySnapshot[]> {
+  const date = await getLatestSnapshotDate();
+  if (!date) return [];
+
+  const { data, error } = await supabase
+    .from('snapshots_daily')
+    .select('company_id, total_open, by_category, companies(name, indexes)')
+    .eq('captured_at', date)
+    .order('total_open', { ascending: false })
+    .limit(limit);
+
+  if (error) { console.error('getTopCompanies:', error.message); return []; }
+
+  return (data ?? []).map(row => {
+    const co = row.companies as unknown as { name: string; indexes: string[] } | null;
+    return {
+      company_id: row.company_id as string,
+      name: co?.name ?? '—',
+      total_open: row.total_open as number,
+      by_category: row.by_category as Record<string, number>,
+      indexes: co?.indexes ?? [],
+    };
+  });
+}
+
+// getCategoryBreakdown is no longer used directly — computed client-side from companies
 export async function getCategoryBreakdown(): Promise<CategoryCount[]> {
   const date = await getLatestSnapshotDate();
   if (!date) return [];
@@ -62,25 +91,4 @@ export async function getCategoryBreakdown(): Promise<CategoryCount[]> {
   return Object.entries(totals)
     .map(([category, count]) => ({ category, count }))
     .sort((a, b) => b.count - a.count);
-}
-
-export async function getTopCompanies(limit = 20): Promise<CompanySnapshot[]> {
-  const date = await getLatestSnapshotDate();
-  if (!date) return [];
-
-  const { data, error } = await supabase
-    .from('snapshots_daily')
-    .select('company_id, total_open, by_category, companies(name)')
-    .eq('captured_at', date)
-    .order('total_open', { ascending: false })
-    .limit(limit);
-
-  if (error) { console.error('getTopCompanies:', error.message); return []; }
-
-  return (data ?? []).map(row => ({
-    company_id: row.company_id as string,
-    name: (row.companies as unknown as { name: string } | null)?.name ?? '—',
-    total_open: row.total_open as number,
-    by_category: row.by_category as Record<string, number>,
-  }));
 }

@@ -4,6 +4,7 @@ export interface IndexValue {
   value: number;
   change_pct: number | null;
   captured_at: string;
+  sparkline: number[];
 }
 
 export interface CategoryCount {
@@ -16,4 +17,5 @@ export interface CompanySnapshot {
   name: string;
   total_open: number;
   by_category: Record<string, number>;
+  indexes: string[];
 }
