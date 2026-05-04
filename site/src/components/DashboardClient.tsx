@@ -46,10 +46,6 @@ export default function DashboardClient({ indexes, allCompanies }: Props) {
 
   const totalRoles = useMemo(() => categories.reduce((s, c) => s + c.count, 0), [categories]);
 
-  const compositeIndex = indexes.find(i => i.name === 'Composite');
-  const activeIndexData = indexes.find(i => i.name === selectedIndex);
-  const heroIndex = activeIndexData ?? compositeIndex;
-
   const isFiltered = selectedIndex !== 'ALL';
 
   const chartDescription = isFiltered
@@ -69,22 +65,6 @@ export default function DashboardClient({ indexes, allCompanies }: Props) {
           The Tech Job Market
         </h1>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm font-sans text-white/50">
-          {heroIndex && (
-            <>
-              <span>
-                <span className="text-white font-medium tabular-nums">
-                  {heroIndex.value.toLocaleString('en-US', { maximumFractionDigits: 1 })}
-                </span>
-                {' '}{heroIndex.name} Index
-                {heroIndex.change_pct != null && (
-                  <span className={`ml-2 tabular-nums font-medium ${heroIndex.change_pct >= 0 ? 'text-cursor' : 'text-red-400'}`}>
-                    {heroIndex.change_pct >= 0 ? '▲' : '▼'} {Math.abs(heroIndex.change_pct).toFixed(2)}% vs yesterday
-                  </span>
-                )}
-              </span>
-              <span className="text-surface-border">·</span>
-            </>
-          )}
           <span>
             <span className="text-white font-medium tabular-nums">{totalRoles.toLocaleString()}</span>
             {' '}open roles
