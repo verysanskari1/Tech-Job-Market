@@ -24,8 +24,10 @@ export default function Navbar({ lastUpdated }: NavbarProps) {
           <span className="font-sans text-white/50 text-xs tracking-widest uppercase">The Tech Job Market</span>
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-white/30 text-xs font-sans tabular-nums">
-            Updated {dateStr}
+          <span className="text-white/30 text-xs font-sans">
+            Updates daily
+            <span className="text-surface-border mx-2">·</span>
+            Last updated <span className="tabular-nums text-white/40">{dateStr}</span> PT
           </span>
         </div>
       </div>
