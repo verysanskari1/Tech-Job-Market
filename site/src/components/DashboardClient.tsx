@@ -124,12 +124,12 @@ export default function DashboardClient({ indexes, allCompanies }: Props) {
           </h2>
           <span className="text-white/30 text-xs font-sans">
             {selectedIndex !== 'ALL' ? selectedIndex : 'All indexes'} ·{' '}
-            {allCompanies.filter(c => !search || c.name.toLowerCase().includes(search.toLowerCase()))
+            {filteredCompanies.filter(c => !search || c.name.toLowerCase().includes(search.toLowerCase()))
               .filter(c => !selectedCategory || (c.by_category[selectedCategory] ?? 0) > 0).length} companies
           </span>
         </div>
         <CompanyTable
-          companies={allCompanies}
+          companies={filteredCompanies}
           selectedCategory={selectedCategory}
           search={search}
           onSearch={setSearch}

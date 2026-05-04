@@ -10,6 +10,7 @@ const newsreader = Newsreader({
   variable: '--font-newsreader',
   display: 'swap',
   preload: false,
+  adjustFontFallback: false,
 });
 
 const inter = Inter({
