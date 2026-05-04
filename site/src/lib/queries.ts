@@ -42,7 +42,7 @@ async function getLatestSnapshotDate(): Promise<string | null> {
   return data.captured_at as string;
 }
 
-export async function getTopCompanies(limit = 20): Promise<CompanySnapshot[]> {
+export async function getTopCompanies(limit = 500): Promise<CompanySnapshot[]> {
   const date = await getLatestSnapshotDate();
   if (!date) return [];
 

@@ -7,7 +7,7 @@ export const revalidate = 3600;
 export default async function DashboardPage() {
   const [indexes, allCompanies] = await Promise.all([
     getLatestIndexValues(),
-    getTopCompanies(50),
+    getTopCompanies(),
   ]);
 
   return (
