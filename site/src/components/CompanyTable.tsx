@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import type { CompanySnapshot } from '@/types';
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -204,9 +204,8 @@ export default function CompanyTable({ companies, selectedCategory, search, onSe
                 : co.total_open;
 
               return (
-                <>
+                <React.Fragment key={co.company_id}>
                   <tr
-                    key={co.company_id}
                     onClick={() => setExpanded(isExpanded ? null : co.company_id)}
                     className="border-b border-surface-border/40 hover:bg-surface-raised/40 transition-colors cursor-pointer"
                   >
@@ -264,7 +263,7 @@ export default function CompanyTable({ companies, selectedCategory, search, onSe
                       </td>
                     </tr>
                   )}
-                </>
+                </React.Fragment>
               );
             })}
             {filtered.length === 0 && (
