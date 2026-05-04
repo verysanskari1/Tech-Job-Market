@@ -1,5 +1,57 @@
 import { FetchedRole } from './types.js';
 
+// Workday handle format: "tenant:wdN:boardPath"
+// e.g. "netflix:wd1:Netflix_External_Site"
+export async function fetchWorkday(handle: string): Promise<FetchedRole[]> {
+  const [tenant, instance, board] = handle.split(':');
+  if (!tenant || !instance || !board) throw new Error(`Workday handle must be "tenant:wdN:board", got "${handle}"`);
+
+  const base = `https://${tenant}.${instance}.myworkdayjobs.com/wday/cxs/${tenant}/${board}/jobs`;
+  const roles: FetchedRole[] = [];
+  const pageSize = 20;
+  let offset = 0;
+  let total = Infinity;
+
+  while (offset < total) {
+    const res = await fetch(base, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ limit: pageSize, offset }),
+    });
+    if (!res.ok) throw new Error(`Workday ${handle}: HTTP ${res.status}`);
+
+    const data = await res.json() as {
+      total?: number;
+      jobPostings?: Array<{
+        title: string;
+        externalPath?: string;
+        locationsText?: string;
+        postedOn?: string;
+        bulletFields?: string[];
+      }>;
+    };
+
+    total = data.total ?? 0;
+    const postings = data.jobPostings ?? [];
+    if (postings.length === 0) break;
+
+    for (const job of postings) {
+      const id = job.externalPath?.split('/').pop() ?? job.bulletFields?.[0] ?? `${offset}-${job.title}`;
+      roles.push({
+        ats_role_id: id,
+        title_raw: job.title,
+        department_raw: null,
+        location: job.locationsText ?? null,
+        posted_at: job.postedOn ? new Date(job.postedOn).toISOString() : null,
+      });
+    }
+
+    offset += pageSize;
+  }
+
+  return roles;
+}
+
 export async function fetchGreenhouse(handle: string): Promise<FetchedRole[]> {
   const url = `https://boards-api.greenhouse.io/v1/boards/${handle}/jobs`;
   const res = await fetch(url);
