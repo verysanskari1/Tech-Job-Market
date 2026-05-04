@@ -41,7 +41,7 @@ Category definitions (pick the most specific match):
 - "Mobile Engineer": iOS, Android, React Native, Flutter, mobile applications.
 - "Hardware Engineer": Electrical engineering, mechanical engineering, firmware, embedded systems, PCB design, RF, avionics, robotics hardware, manufacturing engineering, aerodynamics, propulsion, Field Technical Specialist, Field Service Engineer — physical/hardware roles.
 - "Forward Deployed Engineer": Forward Deployed Engineer, Implementation Engineer, Deployment Engineer — customer-facing roles requiring coding.
-- "GTM Engineer": Sales Engineer, Pre-Sales Engineer, Solutions Engineer (explicitly pre-sales/customer-facing), Customer Success Engineer with engineering focus, Developer Advocate, Technical Evangelist, AI Evangelist, Developer Relations Engineer — roles focused on external developer/customer engagement with a technical component. Solutions Architect belongs here ONLY if the title or department explicitly indicates pre-sales, commercial, or customer-facing work.
+- "GTM Engineer": Solutions Engineer, Sales Engineer, Solutions Architect, Pre-Sales Engineer, Customer Success Engineer with engineering focus, Developer Advocate, Technical Evangelist, AI Evangelist, Developer Relations Engineer — roles focused on external developer/customer engagement with a technical component.
 - "QA/Test Engineer": Software Development Engineer in Test (SDET), QA Engineer, Quality Assurance Engineer, Test Automation Engineer, Software Test Engineer, Integration and Test Engineer — roles focused on testing and quality.
 - "MTS": Member of Technical Staff — use this when the title is literally "Member of Technical Staff", "MTS", or a numbered variant (MTS I, MTS II, Senior MTS) and no functional specialty is stated in the title or department.
 - "New Grad/Junior": Explicitly entry-level ENGINEERING roles only — New Grad SWE, Junior Engineer, Engineering Intern, University Hire for an engineering role. NOT sales, recruiting, or non-engineering new grads.
@@ -52,7 +52,7 @@ Edge cases:
 - Quantum Research Scientist / Quantum Algorithm Researcher → "ML/Research"
 - Enterprise Applications Engineer / Business Applications Engineer → "Backend Engineer"
 - Applied Scientist / Research Scientist with ML/AI focus → "ML/Research"
-- Applied AI Architect for a specific vertical (Commercial, Public Sector, Startups) → "GTM Engineer" only if the department/context is explicitly sales or customer-facing; otherwise "Backend Engineer" or "AI Engineer"
+- Applied AI Architect for a specific vertical (Commercial, Public Sector, Startups) → "GTM Engineer" (customer-facing)
 - Biological / Chemical / Materials Research Scientist → "Other" (not software engineering)
 - "Frontend" in aerospace/defense titles (e.g. "Mission Software Engineer, Air Vehicle Autonomy, Frontend") → "Other" — "frontend" here is avionics jargon, not web frontend
 - Mission Software Engineer / Ground Software Engineer / Systems Software Engineer at a defense or aerospace company → "Other"
