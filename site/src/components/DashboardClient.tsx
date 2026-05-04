@@ -19,6 +19,14 @@ function computeCategories(companies: CompanySnapshot[]) {
     .sort((a, b) => b.count - a.count);
 }
 
+const CHART_DESCRIPTIONS: Record<string, string> = {
+  'Composite':     'Role distribution across all 100 tracked companies. Click any bar to drill in.',
+  'AI 50':         'Where the 50 leading AI-native companies are hiring most aggressively.',
+  'Early but Hot': 'Role mix at fast-growing pre-IPO startups — a leading indicator of where tech is headed.',
+  'Public Tech':   'Hiring priorities at established public tech companies.',
+  'India-HQ':      'Role breakdown for top India-headquartered tech companies.',
+};
+
 interface Props {
   indexes: IndexValue[];
   allCompanies: CompanySnapshot[];
@@ -37,13 +45,16 @@ export default function DashboardClient({ indexes, allCompanies }: Props) {
   const categories = useMemo(() => computeCategories(filteredCompanies), [filteredCompanies]);
 
   const totalRoles = useMemo(() => categories.reduce((s, c) => s + c.count, 0), [categories]);
-  const activeCompanies = filteredCompanies.filter(c => c.total_open > 0).length;
 
   const compositeIndex = indexes.find(i => i.name === 'Composite');
   const activeIndexData = indexes.find(i => i.name === selectedIndex);
   const heroIndex = activeIndexData ?? compositeIndex;
 
   const isFiltered = selectedIndex !== 'ALL';
+
+  const chartDescription = isFiltered
+    ? CHART_DESCRIPTIONS[selectedIndex]
+    : 'Role distribution across all 100 tracked companies. Click any bar to drill in.';
 
   const visibleCompanyCount = filteredCompanies
     .filter(c => !search || c.name.toLowerCase().includes(search.toLowerCase()))
@@ -86,11 +97,8 @@ export default function DashboardClient({ indexes, allCompanies }: Props) {
         </div>
       </section>
 
-      {/* Index cards — click to select an index */}
-      <section className="space-y-2">
-        <p className="text-white/30 text-xs font-sans uppercase tracking-widest">
-          {isFiltered ? `Index — ${selectedIndex}` : 'Indexes'}
-        </p>
+      {/* Index hero carousel */}
+      <section>
         <IndexCards
           indexes={indexes}
           allCompanies={allCompanies}
@@ -101,17 +109,19 @@ export default function DashboardClient({ indexes, allCompanies }: Props) {
 
       {/* Chart */}
       <section className="bg-surface border border-surface-border rounded-xl overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-4 px-6 pt-5 pb-4 border-b border-surface-border">
+        <div className="flex flex-wrap items-start justify-between gap-4 px-6 pt-5 pb-4 border-b border-surface-border">
           <div>
             <h2 className="text-white font-sans font-semibold text-sm uppercase tracking-wider">
               {isFiltered ? `${selectedIndex} — Hiring by Role Type` : 'Hiring by Role Type'}
             </h2>
-            {selectedCategory && (
-              <p className="text-white/40 text-xs font-sans mt-0.5">
-                Filtered to <span className="text-white/70">{selectedCategory}</span>
-                <button onClick={() => setSelectedCategory(null)} className="ml-2 text-white/30 hover:text-white/60 transition-colors">✕ clear</button>
-              </p>
-            )}
+            <p className="text-white/40 text-xs font-sans mt-1 max-w-lg">
+              {selectedCategory
+                ? <>Filtered to <span className="text-white/70">{selectedCategory}</span>
+                    <button onClick={() => setSelectedCategory(null)} className="ml-2 text-white/30 hover:text-white/60 transition-colors">✕ clear</button>
+                  </>
+                : chartDescription
+              }
+            </p>
           </div>
           {isFiltered && (
             <button
@@ -149,7 +159,7 @@ export default function DashboardClient({ indexes, allCompanies }: Props) {
           selectedCategory={selectedCategory}
           search={search}
           onSearch={setSearch}
-          showTopRole={!isFiltered}
+          showTopRole={!isFiltered && !selectedCategory}
         />
       </section>
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { IndexValue, CompanySnapshot } from '@/types';
 import Sparkline from './Sparkline';
 
@@ -14,85 +14,13 @@ const INDEX_COLORS: Record<string, string> = {
   'India-HQ':      '#F87171',
 };
 
-function ChangeChip({ pct }: { pct: number | null }) {
-  if (pct == null) {
-    return <span className="text-white/20 text-xs font-sans tracking-wide">DAY 1</span>;
-  }
-  const positive = pct >= 0;
-  return (
-    <span className={`text-xs font-sans font-medium tabular-nums ${positive ? 'text-cursor' : 'text-ember'}`}>
-      {positive ? '▲' : '▼'} {Math.abs(pct).toFixed(2)}%
-    </span>
-  );
-}
-
-function IndexCardItem({
-  idx, allCompanies, selected, onSelect,
-}: {
-  idx: IndexValue;
-  allCompanies: CompanySnapshot[];
-  selected: boolean;
-  onSelect: () => void;
-}) {
-  const [hovered, setHovered] = useState(false);
-  const color = INDEX_COLORS[idx.name] ?? '#ffffff80';
-
-  const constituents = allCompanies
-    .filter(c => c.indexes.includes(idx.name))
-    .sort((a, b) => b.total_open - a.total_open);
-
-  const totalRoles = constituents.reduce((s, c) => s + c.total_open, 0);
-  const activeCount = constituents.filter(c => c.total_open > 0).length;
-
-  return (
-    <div
-      className={`bg-terminal p-5 flex flex-col gap-2 relative cursor-pointer transition-all ${
-        selected ? 'ring-1 ring-inset' : 'hover:bg-surface-raised/20'
-      }`}
-      style={selected ? { '--tw-ring-color': color } as React.CSSProperties : {}}
-      onClick={onSelect}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-sans uppercase tracking-widest font-medium" style={{ color }}>
-          {idx.name}
-          {selected && <span className="ml-2 text-white/30 normal-case tracking-normal">selected</span>}
-        </span>
-        <ChangeChip pct={idx.change_pct} />
-      </div>
-      <span className="font-serif italic text-white text-4xl leading-none tabular-nums">
-        {idx.value.toLocaleString('en-US', { maximumFractionDigits: 1 })}
-      </span>
-      <Sparkline data={idx.sparkline} color={color} />
-
-      {hovered && constituents.length > 0 && (
-        <div className="absolute bottom-full left-0 mb-2 z-50 bg-surface-raised border border-surface-border rounded-lg p-3 shadow-xl min-w-[220px] max-h-72 overflow-y-auto">
-          <p className="text-white/40 text-xs font-sans uppercase tracking-wider mb-2">
-            {idx.name} · {activeCount} of {constituents.length} hiring
-          </p>
-          <p className="text-white/30 text-xs font-sans mb-2 tabular-nums">
-            {totalRoles.toLocaleString()} total open roles
-          </p>
-          <div className="space-y-1">
-            {constituents.slice(0, 12).map(co => (
-              <div key={co.company_id} className="flex items-center justify-between gap-4">
-                <span className="text-white/70 text-xs font-sans">{co.name}</span>
-                <span className="text-white/40 text-xs font-sans tabular-nums">
-                  {co.total_open > 0 ? co.total_open : '—'}
-                </span>
-              </div>
-            ))}
-            {constituents.length > 12 && (
-              <p className="text-white/20 text-xs font-sans pt-1">+{constituents.length - 12} more</p>
-            )}
-          </div>
-          <p className="text-white/20 text-xs font-sans pt-2 border-t border-surface-border mt-2">Click to view this index</p>
-        </div>
-      )}
-    </div>
-  );
-}
+const INDEX_DESCRIPTIONS: Record<string, string> = {
+  'Composite':     'Every company we track — the broadest view of tech hiring.',
+  'AI 50':         '50 leading AI-native companies, from frontier labs to applied AI startups.',
+  'Early but Hot': 'Fast-growing pre-IPO startups where hiring signals early momentum.',
+  'Public Tech':   'Publicly traded tech companies — established players, real market signal.',
+  'India-HQ':      'Top India-headquartered tech companies, including global product unicorns.',
+};
 
 interface Props {
   indexes: IndexValue[];
@@ -108,27 +36,132 @@ export default function IndexCards({ indexes, allCompanies, selectedIndex, onSel
   const rest = indexes.filter(i => !INDEX_ORDER.includes(i.name));
   const all = [...sorted, ...rest];
 
+  // Carousel position — default to whichever index is selected, or 0
+  const defaultPos = Math.max(0, all.findIndex(i => i.name === selectedIndex));
+  const [pos, setPos] = useState(defaultPos);
+
+  // Sync carousel to external selectedIndex changes
+  useEffect(() => {
+    if (selectedIndex === 'ALL') return;
+    const idx = all.findIndex(i => i.name === selectedIndex);
+    if (idx >= 0) setPos(idx);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedIndex]);
+
   if (all.length === 0) {
     return (
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-px bg-surface-border border border-surface-border">
-        {INDEX_ORDER.map(name => (
-          <div key={name} className="bg-terminal p-5 animate-pulse h-32" />
-        ))}
-      </div>
+      <div className="bg-surface border border-surface-border rounded-xl p-8 h-52 animate-pulse" />
     );
   }
 
+  const idx = all[pos];
+  const color = INDEX_COLORS[idx.name] ?? '#ffffff80';
+  const description = INDEX_DESCRIPTIONS[idx.name] ?? '';
+  const isSelected = selectedIndex === idx.name;
+
+  const constituents = allCompanies
+    .filter(c => c.indexes.includes(idx.name))
+    .sort((a, b) => b.total_open - a.total_open);
+  const totalRoles = constituents.reduce((s, c) => s + c.total_open, 0);
+  const activeCount = constituents.filter(c => c.total_open > 0).length;
+
+  const prev = () => setPos((pos - 1 + all.length) % all.length);
+  const next = () => setPos((pos + 1) % all.length);
+
+  const handleSelect = () => {
+    onSelectIndex(isSelected ? 'ALL' : idx.name);
+  };
+
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-5 gap-px bg-surface-border border border-surface-border">
-      {all.map(idx => (
-        <IndexCardItem
-          key={idx.index_id}
-          idx={idx}
-          allCompanies={allCompanies}
-          selected={selectedIndex === idx.name}
-          onSelect={() => onSelectIndex(selectedIndex === idx.name ? 'ALL' : idx.name)}
-        />
-      ))}
+    <div className="bg-surface border border-surface-border rounded-xl overflow-hidden">
+      {/* Tab strip */}
+      <div className="flex border-b border-surface-border overflow-x-auto">
+        {all.map((ix, i) => {
+          const c = INDEX_COLORS[ix.name] ?? '#ffffff80';
+          const active = i === pos;
+          return (
+            <button
+              key={ix.index_id}
+              onClick={() => { setPos(i); onSelectIndex(ix.name); }}
+              className={`flex-1 min-w-[120px] px-4 py-3 text-xs font-sans uppercase tracking-widest font-medium transition-colors border-b-2 whitespace-nowrap ${
+                active ? 'text-white border-current bg-surface-raised/30' : 'text-white/30 border-transparent hover:text-white/60'
+              }`}
+              style={active ? { color: c, borderColor: c } : {}}
+            >
+              {ix.name}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Hero */}
+      <div className="px-6 pt-5 pb-6">
+        <div className="flex items-start justify-between gap-4 mb-1">
+          <div className="flex-1 min-w-0">
+            <p className="text-white/40 text-sm font-sans leading-snug">{description}</p>
+            <p className="text-white/30 text-xs font-sans mt-1">
+              {activeCount} of {constituents.length} companies hiring
+              <span className="mx-1.5 text-surface-border">·</span>
+              {totalRoles.toLocaleString()} open roles
+            </p>
+          </div>
+          <button
+            onClick={handleSelect}
+            className={`flex-shrink-0 text-xs font-sans px-3 py-1.5 rounded border transition-colors ${
+              isSelected
+                ? 'border-current text-current bg-white/5'
+                : 'border-surface-border text-white/30 hover:text-white/60 hover:border-white/30'
+            }`}
+            style={isSelected ? { color, borderColor: color } : {}}
+          >
+            {isSelected ? '✓ Filtering' : 'Filter to this index'}
+          </button>
+        </div>
+
+        {/* Value + change */}
+        <div className="flex items-baseline gap-3 mt-4 mb-3">
+          <span className="font-serif italic text-white text-5xl leading-none tabular-nums">
+            {idx.value.toLocaleString('en-US', { maximumFractionDigits: 1 })}
+          </span>
+          {idx.change_pct != null ? (
+            <span className={`text-sm font-sans font-medium tabular-nums ${idx.change_pct >= 0 ? 'text-cursor' : 'text-red-400'}`}>
+              {idx.change_pct >= 0 ? '▲' : '▼'} {Math.abs(idx.change_pct).toFixed(2)}% vs yesterday
+            </span>
+          ) : (
+            <span className="text-white/20 text-sm font-sans">baseline day</span>
+          )}
+        </div>
+
+        {/* Large sparkline */}
+        <div className="mt-2">
+          <HeroSparkline data={idx.sparkline} color={color} />
+        </div>
+
+        {/* Dot nav */}
+        <div className="flex items-center justify-center gap-2 mt-4">
+          <button onClick={prev} className="text-white/20 hover:text-white/60 transition-colors px-1 text-xs">‹</button>
+          {all.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => { setPos(i); onSelectIndex(all[i].name); }}
+              className={`w-1.5 h-1.5 rounded-full transition-all ${i === pos ? 'bg-white/80 w-3' : 'bg-white/20 hover:bg-white/40'}`}
+            />
+          ))}
+          <button onClick={next} className="text-white/20 hover:text-white/60 transition-colors px-1 text-xs">›</button>
+        </div>
+      </div>
     </div>
   );
+}
+
+function HeroSparkline({ data, color }: { data: number[]; color: string }) {
+  if (data.length < 2) {
+    return (
+      <div className="h-24 flex items-center justify-center">
+        <div className="w-full h-px bg-white/10" />
+      </div>
+    );
+  }
+  // Use Sparkline with a taller height override
+  return <Sparkline data={data} color={color} height={96} />;
 }
