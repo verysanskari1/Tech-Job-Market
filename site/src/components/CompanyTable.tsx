@@ -110,6 +110,17 @@ const COMPANY_DOMAINS: Record<string, string> = {
   'Box':              'box.com',
 };
 
+function careersUrl(ats: string, handle: string): string {
+  if (ats === 'greenhouse') return `https://boards.greenhouse.io/${handle}`;
+  if (ats === 'lever')      return `https://jobs.lever.co/${handle}`;
+  if (ats === 'ashby')      return `https://jobs.ashbyhq.com/${handle}`;
+  if (ats === 'workday') {
+    const [tenant, instance, board] = handle.split(':');
+    return `https://${tenant}.${instance}.myworkdayjobs.com/${board}`;
+  }
+  return '#';
+}
+
 function topCategory(byCategory: Record<string, number>): string | null {
   const entries = Object.entries(byCategory).sort((a, b) => b[1] - a[1]);
   return entries[0]?.[0] ?? null;
@@ -222,6 +233,18 @@ export default function CompanyTable({ companies, selectedCategory, search, onSe
                           <div className="w-4 h-4 rounded-sm bg-surface-raised" />
                         )}
                         <span className="text-white font-medium">{co.name}</span>
+                        <a
+                          href={careersUrl(co.ats, co.ats_handle)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={e => e.stopPropagation()}
+                          className="text-white/20 hover:text-white/60 transition-colors"
+                          title="View open roles"
+                        >
+                          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M1.5 8.5L8.5 1.5M8.5 1.5H3.5M8.5 1.5V6.5"/>
+                          </svg>
+                        </a>
                       </div>
                     </td>
                     <td className="py-3 pr-4 text-right tabular-nums">

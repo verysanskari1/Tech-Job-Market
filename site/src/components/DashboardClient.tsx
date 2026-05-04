@@ -80,8 +80,8 @@ export default function DashboardClient({ indexes, allCompanies }: Props) {
           </span>
           <span className="text-surface-border">·</span>
           <span>
-            <span className="text-white font-medium tabular-nums">{activeCompanies}</span>
-            {' '}companies hiring
+            tracking <span className="text-white font-medium tabular-nums">{filteredCompanies.length}</span>
+            {' '}companies
           </span>
         </div>
       </section>
@@ -89,7 +89,7 @@ export default function DashboardClient({ indexes, allCompanies }: Props) {
       {/* Index cards — click to select an index */}
       <section className="space-y-2">
         <p className="text-white/30 text-xs font-sans uppercase tracking-widest">
-          {isFiltered ? `Viewing: ${selectedIndex}` : 'All Indexes — click to drill into one'}
+          {isFiltered ? `Index — ${selectedIndex}` : 'Indexes'}
         </p>
         <IndexCards
           indexes={indexes}
@@ -137,7 +137,7 @@ export default function DashboardClient({ indexes, allCompanies }: Props) {
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-white font-sans font-semibold text-sm uppercase tracking-wider">
             {selectedCategory
-              ? `${isFiltered ? selectedIndex : 'All'} — ${selectedCategory}`
+              ? `Companies hiring ${selectedCategory}`
               : isFiltered ? `${selectedIndex} Companies` : 'All Companies'}
           </h2>
           <span className="text-white/30 text-xs font-sans">

@@ -18,4 +18,6 @@ export interface CompanySnapshot {
   total_open: number;
   by_category: Record<string, number>;
   indexes: string[];
+  ats: string;
+  ats_handle: string;
 }

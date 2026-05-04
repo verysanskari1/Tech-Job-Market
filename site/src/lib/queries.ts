@@ -48,7 +48,7 @@ export async function getTopCompanies(limit = 500): Promise<CompanySnapshot[]> {
 
   const { data, error } = await supabase
     .from('snapshots_daily')
-    .select('company_id, total_open, by_category, companies(name, indexes)')
+    .select('company_id, total_open, by_category, companies(name, indexes, ats, ats_handle)')
     .eq('captured_at', date)
     .order('total_open', { ascending: false })
     .limit(limit);
@@ -56,13 +56,15 @@ export async function getTopCompanies(limit = 500): Promise<CompanySnapshot[]> {
   if (error) { console.error('getTopCompanies:', error.message); return []; }
 
   return (data ?? []).map(row => {
-    const co = row.companies as unknown as { name: string; indexes: string[] } | null;
+    const co = row.companies as unknown as { name: string; indexes: string[]; ats: string; ats_handle: string } | null;
     return {
       company_id: row.company_id as string,
       name: co?.name ?? '—',
       total_open: row.total_open as number,
       by_category: row.by_category as Record<string, number>,
       indexes: co?.indexes ?? [],
+      ats: co?.ats ?? '',
+      ats_handle: co?.ats_handle ?? '',
     };
   });
 }
