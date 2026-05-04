@@ -149,9 +149,10 @@ for (const index of indexes as Index[]) {
   let changePct: number | null = null;
 
   if (baseTotal === 0) {
-    // No base snapshot yet — this is the first run, use base_value directly
+    // No base snapshot found for base_date — anchor to today so tomorrow shows real movement
+    await supabase.from('indexes').update({ base_date: today }).eq('id', index.id);
     value = index.base_value;
-    log.info(`Index "${index.name}": no base snapshot yet, setting value = ${value}`);
+    log.info(`Index "${index.name}": base_date had no snapshot, reset to ${today}, value = ${value}`);
   } else {
     value = (currentTotal / baseTotal) * index.base_value;
     value = Math.round(value * 100) / 100;
