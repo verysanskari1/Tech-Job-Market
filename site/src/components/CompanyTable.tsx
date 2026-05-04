@@ -97,10 +97,6 @@ const COMPANY_DOMAINS: Record<string, string> = {
   'Pika':             'pika.art',
   'Inflection AI':    'inflection.ai',
   'Remote':           'remote.com',
-  'Carta':            'carta.com',
-  'Discord':          'discord.com',
-  'Figma':            'figma.com',
-  'Gusto':            'gusto.com',
   'Spotify':          'spotify.com',
   'Nvidia':           'nvidia.com',
   'Salesforce':       'salesforce.com',
@@ -139,9 +135,10 @@ interface Props {
   selectedCategory: string | null;
   search: string;
   onSearch: (s: string) => void;
+  showTopRole?: boolean;
 }
 
-export default function CompanyTable({ companies, selectedCategory, search, onSearch }: Props) {
+export default function CompanyTable({ companies, selectedCategory, search, onSearch, showTopRole = true }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const filtered = companies
@@ -191,7 +188,7 @@ export default function CompanyTable({ companies, selectedCategory, search, onSe
               <th className="text-right text-white/30 font-medium pb-3 pr-4 text-xs uppercase tracking-wider">
                 {selectedCategory ? selectedCategory : 'Open Roles'}
               </th>
-              <th className="text-left text-white/30 font-medium pb-3 text-xs uppercase tracking-wider">Top Role</th>
+              {showTopRole && <th className="text-left text-white/30 font-medium pb-3 text-xs uppercase tracking-wider">Top Role</th>}
             </tr>
           </thead>
           <tbody>
@@ -234,16 +231,18 @@ export default function CompanyTable({ companies, selectedCategory, search, onSe
                         <span className="text-white/20">—</span>
                       )}
                     </td>
-                    <td className="py-3">
-                      {top && co.total_open > 0 ? (
-                        <span
-                          className="text-xs px-2 py-0.5 rounded border border-white/10"
-                          style={{ color: CATEGORY_COLORS[top] ?? '#ffffff80', backgroundColor: `${CATEGORY_COLORS[top] ?? '#fff'}12` }}
-                        >
-                          {top}
-                        </span>
-                      ) : <span className="text-white/20">—</span>}
-                    </td>
+                    {showTopRole && (
+                      <td className="py-3">
+                        {top && co.total_open > 0 ? (
+                          <span
+                            className="text-xs px-2 py-0.5 rounded border border-white/10"
+                            style={{ color: CATEGORY_COLORS[top] ?? '#ffffff80', backgroundColor: `${CATEGORY_COLORS[top] ?? '#fff'}12` }}
+                          >
+                            {top}
+                          </span>
+                        ) : <span className="text-white/20">—</span>}
+                      </td>
+                    )}
                   </tr>
                   {isExpanded && co.total_open > 0 && (
                     <tr key={`${co.company_id}-exp`} className="border-b border-surface-border/40 bg-surface-raised/20">

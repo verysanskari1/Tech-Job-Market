@@ -10,9 +10,11 @@ export default async function DashboardPage() {
     getTopCompanies(),
   ]);
 
+  const lastUpdated = indexes[0]?.captured_at;
+
   return (
     <>
-      <Navbar />
+      <Navbar lastUpdated={lastUpdated} />
       <DashboardClient indexes={indexes} allCompanies={allCompanies} />
     </>
   );

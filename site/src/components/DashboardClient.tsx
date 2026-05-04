@@ -6,8 +6,6 @@ import CategoryChart from './CategoryChart';
 import CompanyTable from './CompanyTable';
 import type { IndexValue, CompanySnapshot } from '@/types';
 
-const INDEX_FILTERS = ['ALL', 'AI 50', 'Early but Hot', 'Public Tech', 'Composite'];
-
 function computeCategories(companies: CompanySnapshot[]) {
   const totals: Record<string, number> = {};
   for (const co of companies) {
@@ -39,8 +37,17 @@ export default function DashboardClient({ indexes, allCompanies }: Props) {
   const categories = useMemo(() => computeCategories(filteredCompanies), [filteredCompanies]);
 
   const totalRoles = useMemo(() => categories.reduce((s, c) => s + c.count, 0), [categories]);
-  const totalCompanies = allCompanies.length;
-  const activeCompanies = allCompanies.filter(c => c.total_open > 0).length;
+  const activeCompanies = filteredCompanies.filter(c => c.total_open > 0).length;
+
+  const compositeIndex = indexes.find(i => i.name === 'Composite');
+  const activeIndexData = indexes.find(i => i.name === selectedIndex);
+  const heroIndex = activeIndexData ?? compositeIndex;
+
+  const isFiltered = selectedIndex !== 'ALL';
+
+  const visibleCompanyCount = filteredCompanies
+    .filter(c => !search || c.name.toLowerCase().includes(search.toLowerCase()))
+    .filter(c => !selectedCategory || (c.by_category[selectedCategory] ?? 0) > 0).length;
 
   return (
     <main className="max-w-7xl mx-auto px-6 py-10 space-y-10">
@@ -48,64 +55,73 @@ export default function DashboardClient({ indexes, allCompanies }: Props) {
       {/* Hero */}
       <section>
         <h1 className="font-serif italic text-white text-5xl md:text-6xl leading-tight mb-3">
-          The Tech Hiring Index
+          The Tech Job Market
         </h1>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm font-sans text-white/50">
+          {heroIndex && (
+            <>
+              <span>
+                <span className="text-white font-medium tabular-nums">
+                  {heroIndex.value.toLocaleString('en-US', { maximumFractionDigits: 1 })}
+                </span>
+                {' '}{heroIndex.name} Index
+                {heroIndex.change_pct != null && (
+                  <span className={`ml-2 tabular-nums font-medium ${heroIndex.change_pct >= 0 ? 'text-cursor' : 'text-red-400'}`}>
+                    {heroIndex.change_pct >= 0 ? '▲' : '▼'} {Math.abs(heroIndex.change_pct).toFixed(2)}% vs yesterday
+                  </span>
+                )}
+              </span>
+              <span className="text-surface-border">·</span>
+            </>
+          )}
           <span>
             <span className="text-white font-medium tabular-nums">{totalRoles.toLocaleString()}</span>
-            {' '}open engineering roles
+            {' '}open roles
           </span>
           <span className="text-surface-border">·</span>
           <span>
             <span className="text-white font-medium tabular-nums">{activeCompanies}</span>
-            {' '}of{' '}
-            <span className="text-white font-medium tabular-nums">{totalCompanies}</span>
             {' '}companies hiring
           </span>
-          <span className="text-surface-border">·</span>
-          <span className="text-white/30">Non-engineering roles excluded</span>
         </div>
       </section>
 
-      {/* Index cards */}
+      {/* Index cards — click to select an index */}
       <section className="space-y-2">
-        <p className="text-white/30 text-xs font-sans uppercase tracking-widest">Indexes</p>
-        <IndexCards indexes={indexes} allCompanies={allCompanies} />
+        <p className="text-white/30 text-xs font-sans uppercase tracking-widest">
+          {isFiltered ? `Viewing: ${selectedIndex}` : 'All Indexes — click to drill into one'}
+        </p>
+        <IndexCards
+          indexes={indexes}
+          allCompanies={allCompanies}
+          selectedIndex={selectedIndex}
+          onSelectIndex={(name) => { setSelectedIndex(name); setSelectedCategory(null); }}
+        />
       </section>
 
-      {/* Chart + index filter */}
+      {/* Chart */}
       <section className="bg-surface border border-surface-border rounded-xl overflow-hidden">
-        {/* Header row */}
         <div className="flex flex-wrap items-center justify-between gap-4 px-6 pt-5 pb-4 border-b border-surface-border">
           <div>
             <h2 className="text-white font-sans font-semibold text-sm uppercase tracking-wider">
-              Roles by Category
+              {isFiltered ? `${selectedIndex} — Hiring by Role Type` : 'Hiring by Role Type'}
             </h2>
             {selectedCategory && (
               <p className="text-white/40 text-xs font-sans mt-0.5">
-                Showing companies with <span className="text-white/70">{selectedCategory}</span> roles
+                Filtered to <span className="text-white/70">{selectedCategory}</span>
                 <button onClick={() => setSelectedCategory(null)} className="ml-2 text-white/30 hover:text-white/60 transition-colors">✕ clear</button>
               </p>
             )}
           </div>
-          {/* Index filter tabs */}
-          <div className="flex items-center gap-1 flex-wrap">
-            {INDEX_FILTERS.map(f => (
-              <button
-                key={f}
-                onClick={() => { setSelectedIndex(f); setSelectedCategory(null); }}
-                className={`px-3 py-1 rounded text-xs font-sans transition-colors ${
-                  selectedIndex === f
-                    ? 'bg-cursor/20 text-cursor border border-cursor/40'
-                    : 'text-white/40 hover:text-white/70 border border-transparent'
-                }`}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
+          {isFiltered && (
+            <button
+              onClick={() => { setSelectedIndex('ALL'); setSelectedCategory(null); }}
+              className="text-white/30 hover:text-white/60 text-xs font-sans border border-surface-border rounded px-3 py-1 transition-colors"
+            >
+              ✕ Clear index filter
+            </button>
+          )}
         </div>
-
         <div className="px-6 py-4">
           <CategoryChart
             data={categories}
@@ -120,12 +136,12 @@ export default function DashboardClient({ indexes, allCompanies }: Props) {
       <section className="bg-surface border border-surface-border rounded-xl p-6">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-white font-sans font-semibold text-sm uppercase tracking-wider">
-            {selectedCategory ? `Companies — ${selectedCategory}` : 'All Companies'}
+            {selectedCategory
+              ? `${isFiltered ? selectedIndex : 'All'} — ${selectedCategory}`
+              : isFiltered ? `${selectedIndex} Companies` : 'All Companies'}
           </h2>
           <span className="text-white/30 text-xs font-sans">
-            {selectedIndex !== 'ALL' ? selectedIndex : 'All indexes'} ·{' '}
-            {filteredCompanies.filter(c => !search || c.name.toLowerCase().includes(search.toLowerCase()))
-              .filter(c => !selectedCategory || (c.by_category[selectedCategory] ?? 0) > 0).length} companies
+            {visibleCompanyCount} companies
           </span>
         </div>
         <CompanyTable
@@ -133,6 +149,7 @@ export default function DashboardClient({ indexes, allCompanies }: Props) {
           selectedCategory={selectedCategory}
           search={search}
           onSearch={setSearch}
+          showTopRole={!isFiltered}
         />
       </section>
 
