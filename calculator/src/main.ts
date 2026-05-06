@@ -204,6 +204,7 @@ for (const index of indexes as Index[]) {
         value,
         change_pct: changePct,
         top_movers: movers,
+        total_open: currentTotal,
       },
       { onConflict: 'captured_at,index_id' },
     );

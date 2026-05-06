@@ -121,20 +121,21 @@ export default function IndexCards({ indexes, allCompanies, selectedIndex, onSel
         {/* Value + change */}
         <div className="flex items-baseline gap-3 mt-4 mb-3">
           <span className="font-serif italic text-white text-5xl leading-none tabular-nums">
-            {idx.value.toLocaleString('en-US', { maximumFractionDigits: 1 })}
+            {totalRoles.toLocaleString()}
           </span>
+          <span className="text-white/40 text-sm font-sans">open roles</span>
           {idx.change_pct != null ? (
             <span className={`text-sm font-sans font-medium tabular-nums ${idx.change_pct >= 0 ? 'text-cursor' : 'text-red-400'}`}>
               {idx.change_pct >= 0 ? '▲' : '▼'} {Math.abs(idx.change_pct).toFixed(2)}% vs yesterday
             </span>
           ) : (
-            <span className="text-white/20 text-sm font-sans">baseline day</span>
+            <span className="text-white/20 text-sm font-sans">first snapshot</span>
           )}
         </div>
 
-        {/* Large sparkline */}
+        {/* Large sparkline — shows total open roles over time */}
         <div className="mt-2">
-          <HeroSparkline data={idx.sparkline} color={color} />
+          <HeroSparkline data={idx.total_sparkline.length >= 2 ? idx.total_sparkline : idx.sparkline} color={color} />
         </div>
 
         {/* Dot nav */}

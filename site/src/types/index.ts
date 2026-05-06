@@ -5,6 +5,8 @@ export interface IndexValue {
   change_pct: number | null;
   captured_at: string;
   sparkline: number[];
+  total_open: number;
+  total_sparkline: number[];
 }
 
 export interface CategoryCount {

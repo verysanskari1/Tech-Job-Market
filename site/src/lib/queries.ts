@@ -4,20 +4,22 @@ import type { CategoryCount, CompanySnapshot, IndexValue } from '@/types';
 export async function getLatestIndexValues(): Promise<IndexValue[]> {
   const { data, error } = await supabase
     .from('index_values_daily')
-    .select('captured_at, index_id, value, change_pct, indexes(name)')
+    .select('captured_at, index_id, value, change_pct, total_open, indexes(name)')
     .order('captured_at', { ascending: false })
     .limit(200);
 
   if (error) { console.error('getLatestIndexValues:', error.message); return []; }
 
-  // Build sparklines (last 30 days per index) and latest values
   const sparklineMap: Record<string, number[]> = {};
+  const totalSparklineMap: Record<string, number[]> = {};
   const latestMap: Record<string, typeof data[0]> = {};
 
   for (const row of data ?? []) {
     if (!latestMap[row.index_id]) latestMap[row.index_id] = row;
     if (!sparklineMap[row.index_id]) sparklineMap[row.index_id] = [];
-    sparklineMap[row.index_id].unshift(Number(row.value)); // ascending order
+    if (!totalSparklineMap[row.index_id]) totalSparklineMap[row.index_id] = [];
+    sparklineMap[row.index_id].unshift(Number(row.value));
+    if (row.total_open != null) totalSparklineMap[row.index_id].unshift(Number(row.total_open));
   }
 
   return Object.values(latestMap).map(row => ({
@@ -27,6 +29,8 @@ export async function getLatestIndexValues(): Promise<IndexValue[]> {
     change_pct: row.change_pct != null ? Number(row.change_pct) : null,
     captured_at: row.captured_at,
     sparkline: sparklineMap[row.index_id] ?? [],
+    total_open: row.total_open != null ? Number(row.total_open) : 0,
+    total_sparkline: totalSparklineMap[row.index_id] ?? [],
   }));
 }
 
