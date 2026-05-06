@@ -127,6 +127,16 @@ const COMPANY_DOMAINS: Record<string, string> = {
   'CRED':             'cred.club',
   'Freshworks':       'freshworks.com',
   'Zepto':            'zeptonow.com',
+  'Netflix':          'netflix.com',
+  'Roblox':           'roblox.com',
+  'ServiceNow':       'servicenow.com',
+  'Workday':          'workday.com',
+  'Microsoft':        'microsoft.com',
+  'Rippling':         'rippling.com',
+  'Wise':             'wise.com',
+  'Apple':            'apple.com',
+  'Meta':             'meta.com',
+  'Google':           'google.com',
 };
 
 function careersUrl(ats: string, handle: string): string {

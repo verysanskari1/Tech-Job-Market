@@ -111,6 +111,16 @@ const TICKERS: Record<string, string> = {
   'CRED':             'CRED',
   'Freshworks':       'FRSH',
   'Zepto':            'ZPTO',
+  'Netflix':          'NFLX',
+  'Roblox':           'RBLX',
+  'ServiceNow':       'NOW',
+  'Workday':          'WDAY',
+  'Microsoft':        'MSFT',
+  'Rippling':         'RPLG',
+  'Wise':             'WISE',
+  'Apple':            'AAPL',
+  'Meta':             'META',
+  'Google':           'GOOGL',
 };
 
 function TickerChip({ mover }: { mover: Mover }) {
