@@ -12,3 +12,16 @@ html, body {
 .font-serif {
   font-feature-settings: 'onum' 1;
 }
+
+@keyframes ticker-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.ticker-track {
+  animation: ticker-scroll 40s linear infinite;
+}
+
+.ticker-track-slow {
+  animation: ticker-scroll 160s linear infinite;
+}

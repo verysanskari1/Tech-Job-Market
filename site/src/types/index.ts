@@ -9,6 +9,13 @@ export interface IndexValue {
   total_sparkline: number[];
 }
 
+export interface Mover {
+  company_id: string;
+  name: string;
+  delta: number;
+  total_open: number;
+}
+
 export interface CategoryCount {
   category: string;
   count: number;

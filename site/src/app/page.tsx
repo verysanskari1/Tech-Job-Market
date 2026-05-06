@@ -1,13 +1,15 @@
 import Navbar from '@/components/Navbar';
 import DashboardClient from '@/components/DashboardClient';
-import { getLatestIndexValues, getTopCompanies } from '@/lib/queries';
+import TickerTape from '@/components/TickerTape';
+import { getLatestIndexValues, getTopCompanies, getMovers } from '@/lib/queries';
 
 export const revalidate = 3600;
 
 export default async function DashboardPage() {
-  const [indexes, allCompanies] = await Promise.all([
+  const [indexes, allCompanies, movers] = await Promise.all([
     getLatestIndexValues(),
     getTopCompanies(),
+    getMovers(),
   ]);
 
   const lastUpdated = indexes[0]?.captured_at;
@@ -15,6 +17,7 @@ export default async function DashboardPage() {
   return (
     <>
       <Navbar lastUpdated={lastUpdated} />
+      <TickerTape movers={movers} />
       <DashboardClient indexes={indexes} allCompanies={allCompanies} />
     </>
   );

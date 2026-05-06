@@ -127,7 +127,6 @@ const COMPANY_DOMAINS: Record<string, string> = {
   'CRED':             'cred.club',
   'Freshworks':       'freshworks.com',
   'Zepto':            'zeptonow.com',
-  'PhonePe':          'phonepe.com',
 };
 
 function careersUrl(ats: string, handle: string): string {

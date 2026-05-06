@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { CategoryCount, CompanySnapshot, IndexValue } from '@/types';
+import type { CategoryCount, CompanySnapshot, IndexValue, Mover } from '@/types';
 
 export async function getLatestIndexValues(): Promise<IndexValue[]> {
   const { data, error } = await supabase
@@ -71,6 +71,42 @@ export async function getTopCompanies(limit = 500): Promise<CompanySnapshot[]> {
       ats_handle: co?.ats_handle ?? '',
     };
   });
+}
+
+export async function getMovers(minDelta = 3): Promise<Mover[]> {
+  // Get the two most recent distinct snapshot dates
+  const { data: allDates } = await supabase
+    .from('snapshots_daily')
+    .select('captured_at')
+    .order('captured_at', { ascending: false })
+    .limit(300);
+
+  const seen = new Set<string>();
+  const uniqueDates: string[] = [];
+  for (const r of allDates ?? []) {
+    const d = r.captured_at as string;
+    if (!seen.has(d)) { seen.add(d); uniqueDates.push(d); }
+  }
+  if (uniqueDates.length < 2) return [];
+
+  const [today, yesterday] = uniqueDates;
+
+  const [{ data: todaySnaps }, { data: yesterdaySnaps }] = await Promise.all([
+    supabase.from('snapshots_daily').select('company_id, total_open, companies(name)').eq('captured_at', today),
+    supabase.from('snapshots_daily').select('company_id, total_open').eq('captured_at', yesterday),
+  ]);
+
+  const prevMap = new Map((yesterdaySnaps ?? []).map(r => [r.company_id as string, r.total_open as number]));
+
+  return (todaySnaps ?? [])
+    .map(r => {
+      const prev = prevMap.get(r.company_id as string) ?? (r.total_open as number);
+      const delta = (r.total_open as number) - prev;
+      const co = r.companies as unknown as { name: string } | null;
+      return { company_id: r.company_id as string, name: co?.name ?? '—', delta, total_open: r.total_open as number };
+    })
+    .filter(m => Math.abs(m.delta) >= minDelta)
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
 }
 
 // getCategoryBreakdown is no longer used directly — computed client-side from companies
