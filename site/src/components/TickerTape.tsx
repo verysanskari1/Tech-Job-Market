@@ -1,9 +1,8 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import type { Mover } from '@/types';
 
-// Public companies use real tickers; private ones get 4-letter shorthand
 const TICKER_MAP: Record<string, string> = {
   // Public
   'Snowflake': 'SNOW',
@@ -72,32 +71,53 @@ function ticker(name: string): string {
 
 interface ChipProps {
   mover: Mover;
+  onHoverChange: (hovered: boolean) => void;
 }
 
-function Chip({ mover }: ChipProps) {
+function Chip({ mover, onHoverChange }: ChipProps) {
   const [hovered, setHovered] = useState(false);
   const up = mover.delta > 0;
   const sign = up ? '+' : '';
-  const color = up ? 'text-[#00FF7F]' : 'text-[#FF4D4D]';
+  const deltaColor = up ? 'text-[#00FF7F]' : 'text-[#FF4D4D]';
+  const deltaBg = up ? 'bg-[#00FF7F]/10' : 'bg-[#FF4D4D]/10';
   const arrow = up ? '▲' : '▼';
+
+  function handleEnter() {
+    setHovered(true);
+    onHoverChange(true);
+  }
+  function handleLeave() {
+    setHovered(false);
+    onHoverChange(false);
+  }
 
   return (
     <span
       className="relative inline-flex items-center gap-1.5 px-3 cursor-default select-none"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseEnter={handleEnter}
+      onMouseLeave={handleLeave}
     >
       <span className="text-white/60 font-mono text-xs font-semibold tracking-wider">
         {ticker(mover.name)}
       </span>
-      <span className={`${color} font-mono text-xs font-semibold`}>
+      <span className={`${deltaColor} font-mono text-xs font-semibold`}>
         {arrow}{sign}{mover.delta}
       </span>
 
       {hovered && (
-        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 whitespace-nowrap rounded-md bg-[#1a1a1a] border border-white/10 px-3 py-1.5 text-xs font-sans text-white shadow-lg pointer-events-none">
-          <span className="font-semibold">{mover.name}</span>
-          <span className="text-white/40 ml-2">{mover.total_open.toLocaleString()} open roles</span>
+        <span
+          className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 whitespace-nowrap rounded-md bg-[#111] border border-white/10 px-3 py-2 shadow-xl pointer-events-none"
+          style={{ minWidth: '160px' }}
+        >
+          <span className="block text-white font-sans font-semibold text-xs mb-1">
+            {mover.name}
+          </span>
+          <span className="block text-white/50 font-sans text-xs">
+            {mover.total_open.toLocaleString()} open roles
+          </span>
+          <span className={`inline-flex items-center gap-1 mt-1.5 px-1.5 py-0.5 rounded text-xs font-mono font-semibold ${deltaColor} ${deltaBg}`}>
+            {arrow} {sign}{mover.delta} today
+          </span>
         </span>
       )}
     </span>
@@ -109,8 +129,7 @@ const SEPARATOR = (
 );
 
 export default function TickerTape({ movers }: { movers: Mover[] }) {
-  const [slow, setSlow] = useState(false);
-  const trackRef = useRef<HTMLDivElement>(null);
+  const [paused, setPaused] = useState(false);
 
   if (movers.length === 0) {
     return (
@@ -122,25 +141,25 @@ export default function TickerTape({ movers }: { movers: Mover[] }) {
     );
   }
 
-  // Duplicate the list so the loop is seamless
   const items = [...movers, ...movers];
 
   return (
+    // overflow-x: clip keeps the scroll clipped horizontally but lets
+    // the tooltip escape downward (unlike overflow-hidden which clips both axes)
     <div
-      className="border-b border-surface-border bg-terminal overflow-hidden h-9 flex items-center"
-      onMouseEnter={() => setSlow(true)}
-      onMouseLeave={() => setSlow(false)}
+      className="border-b border-surface-border bg-terminal h-9 flex items-center relative"
+      style={{ overflowX: 'clip', overflowY: 'visible' }}
     >
       <div
-        ref={trackRef}
         className="flex items-center whitespace-nowrap"
         style={{
-          animation: `ticker-scroll ${slow ? '60s' : '30s'} linear infinite`,
+          animation: 'ticker-scroll 30s linear infinite',
+          animationPlayState: paused ? 'paused' : 'running',
         }}
       >
         {items.map((m, i) => (
           <span key={`${m.company_id}-${i}`} className="inline-flex items-center">
-            <Chip mover={m} />
+            <Chip mover={m} onHoverChange={setPaused} />
             {SEPARATOR}
           </span>
         ))}

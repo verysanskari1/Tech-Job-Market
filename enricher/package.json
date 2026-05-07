@@ -1,0 +1,18 @@
+{
+  "name": "tech-job-market-enricher",
+  "version": "1.0.0",
+  "description": "Apollo.io enrichment script for companies table",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/main.js",
+    "enrich": "npm run build && npm run start"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "@types/node": "^20.11.0"
+  }
+}
