@@ -1,0 +1,19 @@
+{
+  "name": "tech-job-market-scraper-qa",
+  "version": "1.0.0",
+  "description": "Health check: compare live ATS counts vs Supabase raw_roles",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "check": "npm run build && node dist/main.js",
+    "check:verbose": "npm run build && VERBOSE=true node dist/main.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "undici": "^6.6.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "@types/node": "^20.11.0"
+  }
+}
