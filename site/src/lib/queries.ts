@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { CategoryCount, CompanySnapshot, IndexValue } from '@/types';
+import type { CategoryCount, CompanySnapshot, IndexValue, Mover } from '@/types';
 
 export async function getLatestIndexValues(): Promise<IndexValue[]> {
   const { data, error } = await supabase
@@ -62,6 +62,45 @@ export async function getCategoryBreakdown(): Promise<CategoryCount[]> {
   return Object.entries(totals)
     .map(([category, count]) => ({ category, count }))
     .sort((a, b) => b.count - a.count);
+}
+
+export async function getMovers(minDelta = 3): Promise<Mover[]> {
+  // Get the two most recent snapshot dates
+  const { data: dates, error: datesError } = await supabase
+    .from('snapshots_daily')
+    .select('captured_at')
+    .order('captured_at', { ascending: false })
+    .limit(2);
+
+  if (datesError || !dates || dates.length < 2) return [];
+
+  const [today, yesterday] = [dates[0].captured_at as string, dates[1].captured_at as string];
+
+  const [{ data: todayRows }, { data: yesterdayRows }] = await Promise.all([
+    supabase.from('snapshots_daily').select('company_id, total_open, companies(name)').eq('captured_at', today),
+    supabase.from('snapshots_daily').select('company_id, total_open').eq('captured_at', yesterday),
+  ]);
+
+  const prevMap = new Map<string, number>();
+  for (const row of yesterdayRows ?? []) {
+    prevMap.set(row.company_id as string, row.total_open as number);
+  }
+
+  const movers: Mover[] = [];
+  for (const row of todayRows ?? []) {
+    const prev = prevMap.get(row.company_id as string) ?? 0;
+    const delta = (row.total_open as number) - prev;
+    if (Math.abs(delta) >= minDelta) {
+      movers.push({
+        company_id: row.company_id as string,
+        name: (row.companies as { name: string } | null)?.name ?? '—',
+        total_open: row.total_open as number,
+        delta,
+      });
+    }
+  }
+
+  return movers.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
 }
 
 export async function getTopCompanies(limit = 20): Promise<CompanySnapshot[]> {

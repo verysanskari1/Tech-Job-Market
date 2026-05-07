@@ -17,3 +17,10 @@ export interface CompanySnapshot {
   total_open: number;
   by_category: Record<string, number>;
 }
+
+export interface Mover {
+  company_id: string;
+  name: string;
+  total_open: number;
+  delta: number;
+}

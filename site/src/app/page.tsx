@@ -2,24 +2,28 @@ import Navbar from '@/components/Navbar';
 import IndexCards from '@/components/IndexCard';
 import CategoryChart from '@/components/CategoryChart';
 import CompanyTable from '@/components/CompanyTable';
+import TickerTape from '@/components/TickerTape';
 import {
   getLatestIndexValues,
   getCategoryBreakdown,
   getTopCompanies,
+  getMovers,
 } from '@/lib/queries';
 
 export const revalidate = 3600; // ISR — revalidate every hour
 
 export default async function DashboardPage() {
-  const [indexes, categories, companies] = await Promise.all([
+  const [indexes, categories, companies, movers] = await Promise.all([
     getLatestIndexValues(),
     getCategoryBreakdown(),
     getTopCompanies(20),
+    getMovers(3),
   ]);
 
   return (
     <>
       <Navbar />
+      <TickerTape movers={movers} />
 
       <main className="max-w-7xl mx-auto px-6 py-12 space-y-14">
 

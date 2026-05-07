@@ -11,7 +11,7 @@ create extension if not exists pgcrypto;
 create table companies (
   id              uuid primary key default gen_random_uuid(),
   name            text not null,
-  ats             text not null check (ats in ('greenhouse', 'lever', 'ashby')),
+  ats             text not null check (ats in ('greenhouse', 'lever', 'ashby', 'workday', 'custom')),
   ats_handle      text not null,
   careers_url     text,
   region          text,
