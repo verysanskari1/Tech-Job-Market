@@ -1,0 +1,34 @@
+{
+  "title": "Tech Job Market Classification Auditor",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "supabaseUrl": {
+      "title": "Supabase URL",
+      "type": "string",
+      "description": "Your Supabase project URL. Falls back to SUPABASE_URL env var.",
+      "editor": "textfield"
+    },
+    "supabaseKey": {
+      "title": "Supabase Service Role Key",
+      "type": "string",
+      "description": "Supabase service role key. Falls back to SUPABASE_SERVICE_ROLE_KEY env var.",
+      "editor": "textfield",
+      "isSecret": true
+    },
+    "sampleSize": {
+      "title": "Sample Size",
+      "type": "integer",
+      "description": "Total number of roles to audit. Half drawn from low-confidence, half random. Default: 100.",
+      "default": 100,
+      "editor": "number"
+    },
+    "confidenceThreshold": {
+      "title": "Confidence Threshold",
+      "type": "number",
+      "description": "Roles with confidence below this value are included in the low-confidence sample. Default: 0.75.",
+      "default": 0.75,
+      "editor": "number"
+    }
+  }
+}
