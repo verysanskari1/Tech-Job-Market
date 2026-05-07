@@ -24,3 +24,15 @@ export interface Mover {
   total_open: number;
   delta: number;
 }
+
+export interface GainersLosers {
+  gainers: Mover[];
+  losers: Mover[];
+  hasData: boolean;
+}
+
+export interface CategoryMover {
+  category: string;
+  delta: number;
+  total: number;
+}

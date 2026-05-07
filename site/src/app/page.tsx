@@ -3,21 +3,26 @@ import IndexCards from '@/components/IndexCard';
 import CategoryChart from '@/components/CategoryChart';
 import CompanyTable from '@/components/CompanyTable';
 import TickerTape from '@/components/TickerTape';
+import GainersLosersPanel from '@/components/GainersLosersPanel';
 import {
   getLatestIndexValues,
   getCategoryBreakdown,
   getTopCompanies,
   getMovers,
+  getGainersLosers,
+  getCategoryMovers,
 } from '@/lib/queries';
 
 export const revalidate = 3600; // ISR — revalidate every hour
 
 export default async function DashboardPage() {
-  const [indexes, categories, companies, movers] = await Promise.all([
+  const [indexes, categories, companies, movers, gainersLosers, categoryMovers] = await Promise.all([
     getLatestIndexValues(),
     getCategoryBreakdown(),
     getTopCompanies(20),
     getMovers(3),
+    getGainersLosers(5),
+    getCategoryMovers(),
   ]);
 
   return (
@@ -45,6 +50,12 @@ export default async function DashboardPage() {
           </h2>
           <IndexCards indexes={indexes} />
         </section>
+
+        {/* Gainers / Losers / Category movers */}
+        <GainersLosersPanel
+          gainersLosers={gainersLosers}
+          categoryMovers={categoryMovers}
+        />
 
         {/* Two-column: chart + table */}
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
