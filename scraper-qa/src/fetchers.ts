@@ -28,6 +28,37 @@ export async function fetchAshby(handle: string): Promise<AtsResult> {
   return { count: jobs.length, ids };
 }
 
+// handle format: "tenant.wdN:board" e.g. "snapchat.wd1:snap"
+// resolves to: https://snapchat.wd1.myworkdayjobs.com/wday/cxs/snapchat/snap/jobs
+export async function fetchWorkday(handle: string): Promise<AtsResult> {
+  const [subdomain, board] = handle.split(':');
+  if (!subdomain || !board) throw new Error(`Invalid Workday handle "${handle}" — expected "tenant.wdN:board"`);
+  const tenant = subdomain.split('.')[0];
+  const url = `https://${subdomain}.myworkdayjobs.com/wday/cxs/${tenant}/${board}/jobs`;
+
+  const ids: string[] = [];
+  let offset = 0;
+  const limit = 20;
+  let total = Infinity;
+
+  while (ids.length < total) {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ limit, offset }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json() as { total?: number; jobPostings?: Array<{ externalPath: string }> };
+    if (total === Infinity) total = data.total ?? 0;
+    const jobs = data.jobPostings ?? [];
+    if (jobs.length === 0) break;
+    ids.push(...jobs.map(j => j.externalPath));
+    offset += limit;
+  }
+
+  return { count: total, ids };
+}
+
 export async function fetchSmartRecruiters(handle: string): Promise<AtsResult> {
   const res = await fetch(`https://api.smartrecruiters.com/v1/companies/${handle}/postings?limit=100`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
