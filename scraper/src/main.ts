@@ -1,6 +1,5 @@
 import { Actor, log } from 'apify';
-import { createClient } from '@supabase/supabase-js';
-import ws from 'ws';
+import { PostgrestClient } from '@supabase/postgrest-js';
 import { fetchGreenhouse, fetchLever, fetchAshby } from './fetchers.js';
 import type { Company, RawRoleRow } from './types.js';
 
@@ -17,8 +16,12 @@ if (!supabaseUrl || !supabaseKey) {
   throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.');
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const supabase = createClient(supabaseUrl, supabaseKey, { realtime: { transport: ws as any } });
+const db = new PostgrestClient(`${supabaseUrl}/rest/v1`, {
+  headers: {
+    apikey: supabaseKey,
+    Authorization: `Bearer ${supabaseKey}`,
+  },
+});
 const capturedAt = new Date().toISOString();
 
 // Ashby blocks all cloud IPs — route through Apify residential proxy.
@@ -30,19 +33,19 @@ if (!ashbyProxyUrl) log.warning('No proxy available — Ashby companies will fai
 // ------------------------------------------------------------------
 // Load companies
 // ------------------------------------------------------------------
-const { data: companies, error: companiesError } = await supabase
+const { data: companies, error: companiesError } = await db
   .from('companies')
   .select('id, name, ats, ats_handle');
 
 if (companiesError) throw new Error(`Failed to load companies: ${companiesError.message}`);
-log.info(`Loaded ${companies.length} companies`);
+log.info(`Loaded ${(companies ?? []).length} companies`);
 
 // ------------------------------------------------------------------
 // Per-company scrape
 // ------------------------------------------------------------------
 const summary: Record<string, { found: number; removed: number }> = {};
 
-for (const company of companies as Company[]) {
+for (const company of (companies ?? []) as Company[]) {
   log.info(`[${company.name}] Scraping ${company.ats}/${company.ats_handle}`);
 
   let fetched;
@@ -81,7 +84,7 @@ for (const company of companies as Company[]) {
     removed_at: null,
   }));
 
-  const { error: upsertError } = await supabase
+  const { error: upsertError } = await db
     .from('raw_roles')
     .upsert(rows, { onConflict: 'company_id,ats_role_id' });
 
@@ -95,7 +98,7 @@ for (const company of companies as Company[]) {
   // ------------------------------------------------------------------
   const currentIds = new Set(fetched.map(r => r.ats_role_id));
 
-  const { data: openRoles, error: openError } = await supabase
+  const { data: openRoles, error: openError } = await db
     .from('raw_roles')
     .select('id, ats_role_id')
     .eq('company_id', company.id)
@@ -110,7 +113,7 @@ for (const company of companies as Company[]) {
   const toRemove = (openRoles ?? []).filter(r => !currentIds.has(r.ats_role_id));
 
   if (toRemove.length > 0) {
-    const { error: removeError } = await supabase
+    const { error: removeError } = await db
       .from('raw_roles')
       .update({ removed_at: capturedAt })
       .in('id', toRemove.map(r => r.id));
