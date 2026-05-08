@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { fetchGreenhouse, fetchLever, fetchAshby } from './fetchers.js';
+import { fetchGreenhouse, fetchLever, fetchAshby, fetchSmartRecruiters } from './fetchers.js';
 import { sendReport } from './email.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? '';
@@ -41,9 +41,10 @@ export interface Result {
 }
 
 async function fetchLive(company: Company): Promise<{ count: number; ids: string[] }> {
-  if (company.ats === 'greenhouse') return fetchGreenhouse(company.ats_handle);
-  if (company.ats === 'lever')      return fetchLever(company.ats_handle);
-  if (company.ats === 'ashby')      return fetchAshby(company.ats_handle);
+  if (company.ats === 'greenhouse')      return fetchGreenhouse(company.ats_handle);
+  if (company.ats === 'lever')           return fetchLever(company.ats_handle);
+  if (company.ats === 'ashby')           return fetchAshby(company.ats_handle);
+  if (company.ats === 'smartrecruiters') return fetchSmartRecruiters(company.ats_handle);
   throw new Error(`unknown ATS "${company.ats}"`);
 }
 
