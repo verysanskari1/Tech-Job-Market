@@ -1,4 +1,4 @@
-FROM apify/actor-node:20 AS builder
+FROM apify/actor-node:22 AS builder
 
 WORKDIR /usr/src/app
 
@@ -9,7 +9,7 @@ COPY . ./
 RUN npm run build
 
 # ---- runtime image ----
-FROM apify/actor-node:20
+FROM apify/actor-node:22
 
 WORKDIR /usr/src/app
 
