@@ -1,0 +1,48 @@
+{
+  "actorInputSchema": 1,
+  "title": "Classifier Agent Input",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "supabaseUrl": {
+      "title": "Supabase URL",
+      "type": "string",
+      "description": "Your Supabase project URL (e.g. https://xyz.supabase.co).",
+      "editor": "textfield"
+    },
+    "supabaseKey": {
+      "title": "Supabase Service Role Key",
+      "type": "string",
+      "description": "Supabase service role key with read access to classification_audits.",
+      "editor": "textfield",
+      "isSecret": true
+    },
+    "githubToken": {
+      "title": "GitHub Personal Access Token",
+      "type": "string",
+      "description": "GitHub PAT with repo read/write access to create branches and PRs.",
+      "editor": "textfield",
+      "isSecret": true
+    },
+    "githubOwner": {
+      "title": "GitHub Repository Owner",
+      "type": "string",
+      "description": "GitHub username or org that owns the repository.",
+      "editor": "textfield"
+    },
+    "githubRepo": {
+      "title": "GitHub Repository Name",
+      "type": "string",
+      "description": "Repository name (e.g. Tech-Job-Market).",
+      "editor": "textfield"
+    },
+    "disagreementThreshold": {
+      "title": "Disagreement Threshold",
+      "type": "number",
+      "description": "Disagreement rate (0-1) above which the agent will draft a prompt fix. Default: 0.20.",
+      "default": 0.20,
+      "editor": "number"
+    }
+  },
+  "required": ["supabaseUrl", "supabaseKey", "githubToken", "githubOwner", "githubRepo"]
+}

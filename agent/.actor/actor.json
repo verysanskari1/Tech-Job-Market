@@ -1,0 +1,11 @@
+{
+  "actorSpecification": 1,
+  "name": "tech-job-market-agent",
+  "title": "Tech Job Market Classifier Agent",
+  "description": "Monitors classification audit results and, when disagreement rate is too high, uses Claude to draft an improved classifier prompt and opens a GitHub PR for review.",
+  "version": "0.1",
+  "buildTag": "latest",
+  "dockerfile": "../Dockerfile",
+  "readme": "../README.md",
+  "input": "./input_schema.json"
+}
