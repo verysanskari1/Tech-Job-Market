@@ -1,5 +1,6 @@
 import { Actor, log } from 'apify';
 import { createClient } from '@supabase/supabase-js';
+import ws from 'ws';
 import { fetchGreenhouse, fetchLever, fetchAshby } from './fetchers.js';
 import type { Company, RawRoleRow } from './types.js';
 
@@ -16,7 +17,8 @@ if (!supabaseUrl || !supabaseKey) {
   throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.');
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const supabase = createClient(supabaseUrl, supabaseKey, { realtime: { transport: ws as any } });
 const capturedAt = new Date().toISOString();
 
 // Ashby blocks all cloud IPs — route through Apify residential proxy.
