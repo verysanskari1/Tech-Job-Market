@@ -1,6 +1,6 @@
 import { Actor, log } from 'apify';
 import { createClient } from '@supabase/supabase-js';
-import { fetchGreenhouse, fetchLever, fetchAshby } from './fetchers.js';
+import { fetchGreenhouse, fetchLever, fetchAshby, fetchWorkday, fetchSmartRecruiters } from './fetchers.js';
 import type { Company, RawRoleRow } from './types.js';
 
 await Actor.init();
@@ -45,9 +45,12 @@ for (const company of companies as Company[]) {
 
   let fetched;
   try {
-    if (company.ats === 'greenhouse') fetched = await fetchGreenhouse(company.ats_handle);
-    else if (company.ats === 'lever')  fetched = await fetchLever(company.ats_handle);
-    else if (company.ats === 'ashby')  fetched = await fetchAshby(company.ats_handle, ashbyProxyUrl);
+    if (company.ats === 'greenhouse')      fetched = await fetchGreenhouse(company.ats_handle);
+    else if (company.ats === 'lever')      fetched = await fetchLever(company.ats_handle);
+    else if (company.ats === 'ashby')      fetched = await fetchAshby(company.ats_handle, ashbyProxyUrl);
+    else if (company.ats === 'workday')    fetched = await fetchWorkday(company.ats_handle);
+    else if (company.ats === 'smartrecruiters') fetched = await fetchSmartRecruiters(company.ats_handle);
+    else if (company.ats === 'custom') { log.info(`[${company.name}] Custom ATS — skipping`); continue; }
     else { log.warning(`[${company.name}] Unknown ATS "${company.ats}" — skipping`); continue; }
   } catch (err) {
     log.error(`[${company.name}] Fetch failed: ${(err as Error).message}`);

@@ -45,6 +45,89 @@ export async function fetchLever(handle: string): Promise<FetchedRole[]> {
   }));
 }
 
+// handle format: "tenant.wdN:board" e.g. "snapchat.wd1:snap"
+export async function fetchWorkday(handle: string): Promise<FetchedRole[]> {
+  const [subdomain, board] = handle.split(':');
+  if (!subdomain || !board) throw new Error(`Invalid Workday handle "${handle}" — expected "tenant.wdN:board"`);
+  const tenant = subdomain.split('.')[0];
+  const url = `https://${subdomain}.myworkdayjobs.com/wday/cxs/${tenant}/${board}/jobs`;
+
+  const roles: FetchedRole[] = [];
+  let offset = 0;
+  const limit = 20;
+  let total = Infinity;
+
+  while (roles.length < total) {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ limit, offset }),
+    });
+    if (!res.ok) throw new Error(`Workday ${handle}: HTTP ${res.status}`);
+    const data = await res.json() as {
+      total?: number;
+      jobPostings?: Array<{
+        externalPath: string;
+        title: string;
+        locationsText?: string;
+        postedOn?: string;
+      }>;
+    };
+    if (total === Infinity) total = data.total ?? 0;
+    const jobs = data.jobPostings ?? [];
+    if (jobs.length === 0) break;
+    roles.push(...jobs.map(j => ({
+      ats_role_id: j.externalPath,
+      title_raw: j.title,
+      department_raw: null,
+      location: j.locationsText ?? null,
+      posted_at: j.postedOn ?? null,
+    })));
+    offset += limit;
+  }
+
+  return roles;
+}
+
+export async function fetchSmartRecruiters(handle: string): Promise<FetchedRole[]> {
+  const roles: FetchedRole[] = [];
+  let offset = 0;
+  const limit = 100;
+  let total = Infinity;
+
+  while (roles.length < total) {
+    const res = await fetch(
+      `https://api.smartrecruiters.com/v1/companies/${handle}/postings?limit=${limit}&offset=${offset}`
+    );
+    if (!res.ok) throw new Error(`SmartRecruiters ${handle}: HTTP ${res.status}`);
+    const data = await res.json() as {
+      totalFound?: number;
+      content?: Array<{
+        id: string;
+        name: string;
+        department?: { label?: string };
+        location?: { city?: string; country?: string; remote?: boolean };
+        releasedDate?: string;
+      }>;
+    };
+    if (total === Infinity) total = data.totalFound ?? 0;
+    const jobs = data.content ?? [];
+    if (jobs.length === 0) break;
+    roles.push(...jobs.map(j => ({
+      ats_role_id: j.id,
+      title_raw: j.name,
+      department_raw: j.department?.label ?? null,
+      location: j.location?.remote
+        ? 'Remote'
+        : [j.location?.city, j.location?.country].filter(Boolean).join(', ') || null,
+      posted_at: j.releasedDate ?? null,
+    })));
+    offset += limit;
+  }
+
+  return roles;
+}
+
 export async function fetchAshby(handle: string, proxyUrl?: string): Promise<FetchedRole[]> {
   const url = `https://api.ashbyhq.com/posting-api/job-board/${handle}`;
 
