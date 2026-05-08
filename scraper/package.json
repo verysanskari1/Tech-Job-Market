@@ -18,6 +18,6 @@
     "@types/node": "^20.11.0"
   },
   "overrides": {
-    "@supabase/realtime-js": "2.9.7"
+    "@supabase/realtime-js": "2.9.5"
   }
 }
