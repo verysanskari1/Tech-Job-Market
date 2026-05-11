@@ -11,7 +11,7 @@ create extension if not exists pgcrypto;
 create table companies (
   id              uuid primary key default gen_random_uuid(),
   name            text not null,
-  ats             text not null check (ats in ('greenhouse', 'lever', 'ashby')),
+  ats             text not null check (ats in ('greenhouse', 'lever', 'ashby', 'workday', 'custom')),
   ats_handle      text not null,
   careers_url     text,
   region          text,
@@ -39,9 +39,17 @@ create table classified_roles (
   category      text not null check (category in (
                   'AI Engineer',
                   'ML/Research',
+                  'Security Engineer',
+                  'Frontend Engineer',
+                  'Backend Engineer',
+                  'Infrastructure Engineer',
+                  'Data Engineer',
+                  'Mobile Engineer',
+                  'Hardware Engineer',
                   'Forward Deployed Engineer',
                   'GTM Engineer',
-                  'Software Engineer',
+                  'QA/Test Engineer',
+                  'MTS',
                   'New Grad/Junior',
                   'Other'
                 )),

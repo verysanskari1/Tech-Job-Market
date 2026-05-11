@@ -1,0 +1,23 @@
+{
+  "actorSpecification": 1,
+  "name": "ai-tweet-scraper",
+  "title": "AI Model Tweet Sentiment Scraper",
+  "description": "Scrapes top engaged tweets about AI models week-over-week from 2022, runs Claude sentiment analysis, and writes results to Supabase.",
+  "version": "1.0",
+  "input": {
+    "title": "AI Tweet Scraper Input",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+      "supabaseUrl":           { "title": "Supabase URL",              "type": "string", "editor": "textfield" },
+      "supabaseKey":           { "title": "Supabase Service Role Key", "type": "string", "editor": "textfield", "isSecret": true },
+      "anthropicApiKey":       { "title": "Anthropic API Key",         "type": "string", "editor": "textfield", "isSecret": true },
+      "startDate":             { "title": "Start date (YYYY-MM-DD)",   "type": "string", "editor": "textfield", "default": "2022-01-01" },
+      "endDate":               { "title": "End date (YYYY-MM-DD)",     "type": "string", "editor": "textfield" },
+      "tweetsPerModelPerWeek": { "title": "Top tweets per model/week", "type": "integer", "default": 10 },
+      "twitterActorId":        { "title": "Apify Twitter actor ID",    "type": "string", "editor": "textfield", "default": "apidojo/tweet-flash" },
+      "modelSlugs":            { "title": "Models to scrape (empty = all)", "type": "array", "editor": "stringList" }
+    },
+    "required": ["supabaseUrl", "supabaseKey", "anthropicApiKey"]
+  }
+}

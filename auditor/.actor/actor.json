@@ -1,0 +1,11 @@
+{
+  "actorSpecification": 1,
+  "name": "tech-job-market-auditor",
+  "title": "Tech Job Market Classification Auditor",
+  "description": "Re-classifies a sample of roles from classified_roles using a skeptical second-opinion prompt and writes disagreement results to classification_audits.",
+  "version": "0.1",
+  "buildTag": "latest",
+  "dockerfile": "../Dockerfile",
+  "readme": "../README.md",
+  "input": "./input_schema.json"
+}

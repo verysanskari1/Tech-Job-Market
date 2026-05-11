@@ -1,0 +1,20 @@
+{
+  "title": "Tech Job Market Calculator",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "supabaseUrl": {
+      "title": "Supabase URL",
+      "type": "string",
+      "description": "Your Supabase project URL. Falls back to SUPABASE_URL env var.",
+      "editor": "textfield"
+    },
+    "supabaseKey": {
+      "title": "Supabase Service Role Key",
+      "type": "string",
+      "description": "Supabase service role key. Falls back to SUPABASE_SERVICE_ROLE_KEY env var.",
+      "editor": "textfield",
+      "isSecret": true
+    }
+  }
+}
