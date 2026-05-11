@@ -1,7 +1,7 @@
 {
   "name": "tech-job-market-scraper",
   "version": "1.0.0",
-  "description": "Apify actor that scrapes job postings from Greenhouse, Lever, and Ashby ATS platforms.",
+  "description": "Apify actor that scrapes job postings from Greenhouse, Lever, Ashby, SmartRecruiters, Workday, and iCIMS ATS platforms.",
   "type": "module",
   "main": "dist/main.js",
   "scripts": {
@@ -11,6 +11,7 @@
   "dependencies": {
     "apify": "^3.2.0",
     "@supabase/postgrest-js": "^1.15.0",
+    "cheerio": "^1.0.0",
     "undici": "^6.0.0"
   },
   "devDependencies": {
