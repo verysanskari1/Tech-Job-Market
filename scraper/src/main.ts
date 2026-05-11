@@ -16,7 +16,7 @@ if (!supabaseUrl || !supabaseKey) {
   throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.');
 }
 
-const supabase = new PostgrestClient(`${supabaseUrl.replace(/\/$/, '')}/rest/v1`, {
+const db = new PostgrestClient(`${supabaseUrl.replace(/\/$/, '')}/rest/v1`, {
   headers: {
     apikey: supabaseKey,
     Authorization: `Bearer ${supabaseKey}`,
@@ -33,29 +33,29 @@ if (!ashbyProxyUrl) log.warning('No proxy available — Ashby companies will fai
 // ------------------------------------------------------------------
 // Load companies
 // ------------------------------------------------------------------
-const { data: companies, error: companiesError } = await supabase
+const { data: companies, error: companiesError } = await db
   .from('companies')
   .select('id, name, ats, ats_handle');
 
 if (companiesError) throw new Error(`Failed to load companies: ${companiesError.message}`);
-log.info(`Loaded ${companies.length} companies`);
+log.info(`Loaded ${(companies ?? []).length} companies`);
 
 // ------------------------------------------------------------------
 // Per-company scrape
 // ------------------------------------------------------------------
 const summary: Record<string, { found: number; removed: number }> = {};
 
-for (const company of companies as Company[]) {
+for (const company of (companies ?? []) as Company[]) {
   log.info(`[${company.name}] Scraping ${company.ats}/${company.ats_handle}`);
 
   let fetched;
   try {
-    if (company.ats === 'greenhouse')          fetched = await fetchGreenhouse(company.ats_handle);
-    else if (company.ats === 'lever')          fetched = await fetchLever(company.ats_handle);
-    else if (company.ats === 'ashby')          fetched = await fetchAshby(company.ats_handle, ashbyProxyUrl);
+    if (company.ats === 'greenhouse')           fetched = await fetchGreenhouse(company.ats_handle);
+    else if (company.ats === 'lever')           fetched = await fetchLever(company.ats_handle);
+    else if (company.ats === 'ashby')           fetched = await fetchAshby(company.ats_handle, ashbyProxyUrl);
     else if (company.ats === 'smartrecruiters') fetched = await fetchSmartRecruiters(company.ats_handle);
-    else if (company.ats === 'workday')        fetched = await fetchWorkday(company.ats_handle, ashbyProxyUrl);
-    else if (company.ats === 'icims')          fetched = await fetchIcims(company.ats_handle);
+    else if (company.ats === 'workday')         fetched = await fetchWorkday(company.ats_handle, ashbyProxyUrl);
+    else if (company.ats === 'icims')           fetched = await fetchIcims(company.ats_handle);
     else { log.warning(`[${company.name}] Unknown ATS "${company.ats}" — skipping`); continue; }
   } catch (err) {
     log.error(`[${company.name}] Fetch failed: ${(err as Error).message}`);
@@ -87,7 +87,7 @@ for (const company of companies as Company[]) {
     removed_at: null,
   }));
 
-  const { error: upsertError } = await supabase
+  const { error: upsertError } = await db
     .from('raw_roles')
     .upsert(rows, { onConflict: 'company_id,ats_role_id' });
 
@@ -101,7 +101,7 @@ for (const company of companies as Company[]) {
   // ------------------------------------------------------------------
   const currentIds = new Set(fetched.map(r => r.ats_role_id));
 
-  const { data: openRoles, error: openError } = await supabase
+  const { data: openRoles, error: openError } = await db
     .from('raw_roles')
     .select('id, ats_role_id')
     .eq('company_id', company.id)
@@ -116,7 +116,7 @@ for (const company of companies as Company[]) {
   const toRemove = (openRoles ?? []).filter(r => !currentIds.has(r.ats_role_id));
 
   if (toRemove.length > 0) {
-    const { error: removeError } = await supabase
+    const { error: removeError } = await db
       .from('raw_roles')
       .update({ removed_at: capturedAt })
       .in('id', toRemove.map(r => r.id));
