@@ -1,5 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
-import { countGreenhouse, countLever, countAshby } from './fetchers.js';
+import { PostgrestClient } from '@supabase/postgrest-js';
+import { countGreenhouse, countLever, countAshby, countSmartRecruiters, countWorkday } from './fetchers.js';
 
 // Load env — dotenv not required, just export vars before running
 const SUPABASE_URL = process.env.SUPABASE_URL ?? '';
@@ -15,7 +15,12 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
   process.exit(1);
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabase = new PostgrestClient(`${SUPABASE_URL.replace(/\/$/, '')}/rest/v1`, {
+  headers: {
+    apikey: SUPABASE_KEY,
+    Authorization: `Bearer ${SUPABASE_KEY}`,
+  },
+});
 
 interface Company {
   id: string;
@@ -36,9 +41,11 @@ interface Result {
 }
 
 async function getLiveCount(company: Company): Promise<number> {
-  if (company.ats === 'greenhouse') return countGreenhouse(company.ats_handle);
-  if (company.ats === 'lever')      return countLever(company.ats_handle);
-  if (company.ats === 'ashby')      return countAshby(company.ats_handle);
+  if (company.ats === 'greenhouse')      return countGreenhouse(company.ats_handle);
+  if (company.ats === 'lever')           return countLever(company.ats_handle);
+  if (company.ats === 'ashby')           return countAshby(company.ats_handle);
+  if (company.ats === 'smartrecruiters') return countSmartRecruiters(company.ats_handle);
+  if (company.ats === 'workday')         return countWorkday(company.ats_handle);
   throw new Error(`unknown ATS "${company.ats}"`);
 }
 
