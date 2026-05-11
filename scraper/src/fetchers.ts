@@ -1,3 +1,4 @@
+import * as cheerio from 'cheerio';
 import { FetchedRole } from './types.js';
 
 export async function fetchGreenhouse(handle: string): Promise<FetchedRole[]> {
@@ -203,6 +204,74 @@ export async function fetchWorkday(handle: string, proxyUrl?: string): Promise<F
 
     offset += page.length;
     if (offset > 10000) break; // hard safety stop
+  }
+
+  return roles;
+}
+
+// iCIMS has no public JSON API — scrape the public job-board HTML.
+// Handle format: the careers subdomain prefix, e.g. "careers-americas"
+// (full URL becomes https://careers-americas.icims.com/jobs/search?...).
+export async function fetchIcims(handle: string): Promise<FetchedRole[]> {
+  const base = `https://${handle}.icims.com`;
+  const roles: FetchedRole[] = [];
+  const seen = new Set<string>();
+
+  // iCIMS paginates via ?pr=N (zero-indexed). Page size is typically 25.
+  // Walk pages until one returns 0 new rows, with a hard cap as a safety net.
+  const MAX_PAGES = 200;
+
+  for (let pr = 0; pr < MAX_PAGES; pr++) {
+    const url = `${base}/jobs/search?ss=1&searchKeyword=&searchLocation=&pr=${pr}&in_iframe=1`;
+    const res = await fetch(url, {
+      headers: {
+        // iCIMS is HTML-only; declare it so we don't get a 406 from picky tenants.
+        Accept: 'text/html,application/xhtml+xml',
+        'User-Agent': 'Mozilla/5.0 (compatible; tech-job-market-scraper/1.0)',
+      },
+    });
+    if (!res.ok) throw new Error(`iCIMS ${handle}: HTTP ${res.status}`);
+
+    const html = await res.text();
+    const $ = cheerio.load(html);
+
+    let pageCount = 0;
+    // Each job row is an <a> whose href contains "/jobs/{id}/...". Different
+    // iCIMS skins wrap this differently, so target the link itself.
+    $('a[href*="/jobs/"]').each((_, el) => {
+      const href = $(el).attr('href') ?? '';
+      const match = href.match(/\/jobs\/([^/?#]+)/);
+      if (!match) return;
+      const id = match[1];
+      // Skip non-job links like "/jobs/search" or "/jobs/login".
+      if (!/^\d/.test(id) && !/^[A-Za-z0-9_-]{4,}$/.test(id)) return;
+      if (id === 'search' || id === 'login') return;
+      if (seen.has(id)) return;
+
+      // Title sits inside the link or in a child .title element.
+      const title =
+        $(el).find('.title').first().text().trim() ||
+        $(el).text().trim().split('\n')[0]?.trim() ||
+        '';
+      if (!title) return;
+
+      // Location is a sibling/descendant; iCIMS labels vary by skin.
+      let location: string | null = null;
+      const locEl = $(el).find('[data-name="Job Location"], .location').first();
+      if (locEl.length) location = locEl.text().trim() || null;
+
+      seen.add(id);
+      roles.push({
+        ats_role_id: id,
+        title_raw: title,
+        department_raw: null,
+        location,
+        posted_at: null, // iCIMS only shows "Posted X days ago" relative strings
+      });
+      pageCount++;
+    });
+
+    if (pageCount === 0) break; // no new rows on this page → we're done
   }
 
   return roles;

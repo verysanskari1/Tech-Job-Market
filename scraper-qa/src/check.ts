@@ -1,5 +1,5 @@
 import { PostgrestClient } from '@supabase/postgrest-js';
-import { countGreenhouse, countLever, countAshby, countSmartRecruiters, countWorkday } from './fetchers.js';
+import { countGreenhouse, countLever, countAshby, countSmartRecruiters, countWorkday, countIcims } from './fetchers.js';
 
 // Load env — dotenv not required, just export vars before running
 const SUPABASE_URL = process.env.SUPABASE_URL ?? '';
@@ -46,6 +46,7 @@ async function getLiveCount(company: Company): Promise<number> {
   if (company.ats === 'ashby')           return countAshby(company.ats_handle);
   if (company.ats === 'smartrecruiters') return countSmartRecruiters(company.ats_handle);
   if (company.ats === 'workday')         return countWorkday(company.ats_handle);
+  if (company.ats === 'icims')           return countIcims(company.ats_handle);
   throw new Error(`unknown ATS "${company.ats}"`);
 }
 
