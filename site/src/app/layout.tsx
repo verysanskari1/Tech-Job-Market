@@ -10,8 +10,8 @@ const newsreader = Newsreader({
 });
 
 export const metadata: Metadata = {
-  title: 'Tech Job Market — HackerRank',
-  description: 'A daily index tracking tech hiring across 100 companies.',
+  title: 'The Doomberg Index — Live tech hiring tracker',
+  description: 'A live ticker of open software roles across the companies actually building things. Tech isn’t doomed until this number is zero.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
