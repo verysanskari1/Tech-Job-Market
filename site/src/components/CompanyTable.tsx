@@ -1,3 +1,10 @@
+'use client';
+
+import { useState } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { slugify } from '@/lib/slug';
+import { logoUrl } from '@/lib/logos';
 import type { CompanySnapshot } from '@/types';
 
 function topCategory(byCategory: Record<string, number>): string {
@@ -5,7 +12,55 @@ function topCategory(byCategory: Record<string, number>): string {
   return entries[0]?.[0] ?? '—';
 }
 
+function topCategories(byCategory: Record<string, number>, n = 5) {
+  return Object.entries(byCategory)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, n);
+}
+
+function HoverPreview({ co }: { co: CompanySnapshot }) {
+  const cats = topCategories(co.by_category, 6);
+  const max = cats[0]?.[1] ?? 1;
+  return (
+    <div className="absolute z-30 left-0 top-full mt-2 w-72 bg-surface-raised border border-surface-border rounded-xl shadow-2xl p-4 space-y-3 pointer-events-none">
+      <div className="flex items-center gap-3">
+        <Image
+          src={logoUrl(co.name)}
+          alt=""
+          width={28}
+          height={28}
+          className="rounded bg-canvas/5"
+          unoptimized
+        />
+        <div className="flex-1 min-w-0">
+          <p className="text-canvas font-sans font-medium text-sm">{co.name}</p>
+          <p className="text-white/40 text-xs font-sans">{co.total_open.toLocaleString()} open roles</p>
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        {cats.map(([cat, count]) => (
+          <div key={cat} className="space-y-1">
+            <div className="flex items-baseline justify-between gap-2 text-xs font-sans">
+              <span className="text-white/70 truncate">{cat}</span>
+              <span className="text-white/40 tabular-nums">{count}</span>
+            </div>
+            <div className="h-1 bg-surface rounded-full overflow-hidden">
+              <div
+                className="h-full bg-aurora rounded-full"
+                style={{ width: `${(count / max) * 100}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="text-white/30 text-[10px] font-sans italic">Click to see every role</p>
+    </div>
+  );
+}
+
 export default function CompanyTable({ companies }: { companies: CompanySnapshot[] }) {
+  const [hovered, setHovered] = useState<string | null>(null);
+
   if (companies.length === 0) {
     return (
       <div className="text-white/30 text-sm font-sans py-8 text-center">
@@ -15,24 +70,42 @@ export default function CompanyTable({ companies }: { companies: CompanySnapshot
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-visible">
       <table className="w-full text-sm font-sans">
         <thead>
           <tr className="border-b border-surface-border">
             <th className="text-left text-white/40 font-medium pb-3 pr-4 w-8">#</th>
             <th className="text-left text-white/40 font-medium pb-3 pr-4">Company</th>
-            <th className="text-right text-white/40 font-medium pb-3 pr-4">Open Roles</th>
-            <th className="text-left text-white/40 font-medium pb-3">Top Category</th>
+            <th className="text-right text-white/40 font-medium pb-3 pr-4">Open roles</th>
+            <th className="text-left text-white/40 font-medium pb-3">Top category</th>
           </tr>
         </thead>
         <tbody>
           {companies.map((co, i) => (
             <tr
               key={co.company_id}
-              className="border-b border-surface-border/50 hover:bg-surface-raised/50 transition-colors"
+              className="border-b border-surface-border/50 hover:bg-surface-raised/50 transition-colors relative"
+              onMouseEnter={() => setHovered(co.company_id)}
+              onMouseLeave={() => setHovered(null)}
             >
-              <td className="py-3 pr-4 text-white/30">{i + 1}</td>
-              <td className="py-3 pr-4 text-white font-medium">{co.name}</td>
+              <td className="py-3 pr-4 text-white/30 tabular-nums">{i + 1}</td>
+              <td className="py-3 pr-4 relative">
+                <Link
+                  href={`/company/${slugify(co.name)}`}
+                  className="flex items-center gap-3 text-canvas font-medium hover:text-aurora transition-colors"
+                >
+                  <Image
+                    src={logoUrl(co.name)}
+                    alt=""
+                    width={24}
+                    height={24}
+                    className="rounded bg-canvas/5"
+                    unoptimized
+                  />
+                  <span>{co.name}</span>
+                </Link>
+                {hovered === co.company_id && <HoverPreview co={co} />}
+              </td>
               <td className="py-3 pr-4 text-right text-white/80 tabular-nums">
                 {co.total_open.toLocaleString()}
               </td>

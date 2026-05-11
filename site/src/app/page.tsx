@@ -1,11 +1,9 @@
 import Navbar from '@/components/Navbar';
-import IndexCards from '@/components/IndexCard';
-import CategoryChart from '@/components/CategoryChart';
+import HeroChart from '@/components/HeroChart';
 import CompanyTable from '@/components/CompanyTable';
 import TickerTape from '@/components/TickerTape';
 import {
-  getLatestIndexValues,
-  getCategoryBreakdown,
+  getAllIndexSeries,
   getTopCompanies,
   getMovers,
 } from '@/lib/queries';
@@ -13,10 +11,9 @@ import {
 export const revalidate = 3600; // ISR — revalidate every hour
 
 export default async function DashboardPage() {
-  const [indexes, categories, companies, movers] = await Promise.all([
-    getLatestIndexValues(),
-    getCategoryBreakdown(),
-    getTopCompanies(20),
+  const [series, companies, movers] = await Promise.all([
+    getAllIndexSeries(90),
+    getTopCompanies(40),
     getMovers(3),
   ]);
 
@@ -25,46 +22,35 @@ export default async function DashboardPage() {
       <Navbar />
       <TickerTape movers={movers} />
 
-      <main className="max-w-7xl mx-auto px-6 py-12 space-y-14">
+      <main className="max-w-7xl mx-auto px-6 py-10 md:py-14 space-y-16">
 
-        {/* Hero */}
-        <section className="space-y-2">
-          <h1 className="font-serif italic text-white text-5xl md:text-6xl leading-tight">
-            The Tech Hiring Index
+        {/* Brand strap-line */}
+        <section className="space-y-3">
+          <h1 className="font-serif italic text-canvas text-4xl md:text-5xl leading-tight">
+            The <span className="text-aurora not-italic font-sans font-medium">Doomberg</span> Index
           </h1>
-          <p className="text-white/50 font-sans text-base max-w-xl">
-            Tracking open roles across 100 companies daily — modelled on how a
-            stock market index works.
+          <p className="text-white/50 font-sans text-base max-w-2xl">
+            A live ticker of open software roles across the companies actually building things.
+            Tech isn&apos;t <em className="font-serif italic text-white/80">doomed</em> — until this number is zero.
           </p>
         </section>
 
-        {/* Index cards */}
+        {/* Hero: total roles + chart + toggles + constituents */}
+        <HeroChart series={series} />
+
+        {/* Top companies */}
         <section className="space-y-4">
-          <h2 className="text-white/40 text-xs font-sans uppercase tracking-widest">
-            Indexes
-          </h2>
-          <IndexCards indexes={indexes} />
-        </section>
-
-        {/* Two-column: chart + table */}
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
-          {/* Category breakdown */}
-          <div className="bg-surface border border-surface-border rounded-xl p-6 space-y-4">
-            <h2 className="text-white font-sans font-semibold text-sm uppercase tracking-wider">
-              Roles by Category
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-canvas font-sans font-semibold text-lg md:text-xl">
+              Top companies <span className="text-white/40 font-normal italic font-serif">by open roles</span>
             </h2>
-            <CategoryChart data={categories} />
+            <p className="text-white/40 text-xs font-sans uppercase tracking-widest">
+              Hover for breakdown · click to drill in
+            </p>
           </div>
-
-          {/* Top companies */}
-          <div className="bg-surface border border-surface-border rounded-xl p-6 space-y-4">
-            <h2 className="text-white font-sans font-semibold text-sm uppercase tracking-wider">
-              Top Companies by Open Roles
-            </h2>
+          <div className="bg-surface border border-surface-border rounded-2xl p-4 md:p-6">
             <CompanyTable companies={companies} />
           </div>
-
         </section>
 
       </main>
