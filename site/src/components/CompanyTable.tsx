@@ -1,10 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
+import CompanyLogo from '@/components/CompanyLogo';
 import { slugify } from '@/lib/slug';
-import { logoUrl } from '@/lib/logos';
 import type { CompanySnapshot } from '@/types';
 
 function topCategory(byCategory: Record<string, number>): string {
@@ -24,14 +23,7 @@ function HoverPreview({ co }: { co: CompanySnapshot }) {
   return (
     <div className="absolute z-30 left-0 top-full mt-2 w-72 bg-surface-raised border border-surface-border rounded-xl shadow-2xl p-4 space-y-3 pointer-events-none">
       <div className="flex items-center gap-3">
-        <Image
-          src={logoUrl(co.name)}
-          alt=""
-          width={28}
-          height={28}
-          className="rounded bg-canvas/5"
-          unoptimized
-        />
+        <CompanyLogo name={co.name} careersUrl={co.careers_url} size={28} />
         <div className="flex-1 min-w-0">
           <p className="text-canvas font-sans font-medium text-sm">{co.name}</p>
           <p className="text-white/40 text-xs font-sans">{co.total_open.toLocaleString()} open roles</p>
@@ -53,7 +45,6 @@ function HoverPreview({ co }: { co: CompanySnapshot }) {
           </div>
         ))}
       </div>
-      <p className="text-white/30 text-[10px] font-sans italic">Click to see every role</p>
     </div>
   );
 }
@@ -64,7 +55,7 @@ export default function CompanyTable({ companies }: { companies: CompanySnapshot
   if (companies.length === 0) {
     return (
       <div className="text-white/30 text-sm font-sans py-8 text-center">
-        No data yet
+        No data yet.
       </div>
     );
   }
@@ -84,7 +75,7 @@ export default function CompanyTable({ companies }: { companies: CompanySnapshot
           {companies.map((co, i) => (
             <tr
               key={co.company_id}
-              className="border-b border-surface-border/50 hover:bg-surface-raised/50 transition-colors relative"
+              className="border-b border-surface-border/50 hover:bg-surface-raised/30 transition-colors relative"
               onMouseEnter={() => setHovered(co.company_id)}
               onMouseLeave={() => setHovered(null)}
             >
@@ -92,17 +83,12 @@ export default function CompanyTable({ companies }: { companies: CompanySnapshot
               <td className="py-3 pr-4 relative">
                 <Link
                   href={`/company/${slugify(co.name)}`}
-                  className="flex items-center gap-3 text-canvas font-medium hover:text-aurora transition-colors"
+                  className="flex items-center gap-3 text-canvas hover:text-aurora transition-colors group"
                 >
-                  <Image
-                    src={logoUrl(co.name)}
-                    alt=""
-                    width={24}
-                    height={24}
-                    className="rounded bg-canvas/5"
-                    unoptimized
-                  />
-                  <span>{co.name}</span>
+                  <CompanyLogo name={co.name} careersUrl={co.careers_url} size={24} />
+                  <span className="font-medium underline decoration-transparent group-hover:decoration-aurora/60 underline-offset-4 transition-colors">
+                    {co.name}
+                  </span>
                 </Link>
                 {hovered === co.company_id && <HoverPreview co={co} />}
               </td>
@@ -110,9 +96,12 @@ export default function CompanyTable({ companies }: { companies: CompanySnapshot
                 {co.total_open.toLocaleString()}
               </td>
               <td className="py-3">
-                <span className="bg-surface-raised border border-surface-border text-white/70 rounded-md px-2 py-0.5 text-xs">
+                <Link
+                  href={`/role/${slugify(topCategory(co.by_category))}`}
+                  className="bg-surface-raised border border-surface-border text-white/70 hover:text-canvas hover:border-white/40 rounded-md px-2 py-0.5 text-xs transition-colors"
+                >
                   {topCategory(co.by_category)}
-                </span>
+                </Link>
               </td>
             </tr>
           ))}

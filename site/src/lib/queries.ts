@@ -5,23 +5,26 @@ import type {
   CompanyDetail,
   CompanyRole,
   CompanySnapshot,
+  IndexConstituent,
   IndexSeries,
   IndexValue,
   Mover,
+  RoleCategoryDetail,
+  RoleCategorySummary,
   TimeSeriesPoint,
 } from '@/types';
 
 // Punchy one-liners shown under each index name on the dashboard.
 // Keys must match the index names in the `indexes` table.
 export const INDEX_DESCRIPTIONS: Record<string, string> = {
-  Composite:        'Every tracked company combined — the headline number.',
   'AI 50':          'The fifty labs and startups pushing AI from papers to products.',
   'Early but Hot':  'Hyper-growth startups still small enough to feel it.',
   'Public Tech':    'Mature, publicly-traded software companies.',
   'India-HQ':       'Companies headquartered in India.',
 };
 
-export const INDEX_ORDER = ['Composite', 'AI 50', 'Early but Hot', 'Public Tech', 'India-HQ'];
+// 'Composite' deliberately omitted — it duplicates the "All tech" total.
+export const INDEX_ORDER = ['AI 50', 'Early but Hot', 'Public Tech', 'India-HQ'];
 
 export async function getLatestIndexValues(): Promise<IndexValue[]> {
   const { data, error } = await supabase
@@ -131,19 +134,23 @@ export async function getTopCompanies(limit = 20): Promise<CompanySnapshot[]> {
 
   const { data, error } = await supabase
     .from('snapshots_daily')
-    .select('company_id, total_open, by_category, companies(name)')
+    .select('company_id, total_open, by_category, companies(name, careers_url)')
     .eq('captured_at', date)
     .order('total_open', { ascending: false })
     .limit(limit);
 
   if (error) throw error;
 
-  return (data ?? []).map(row => ({
-    company_id: row.company_id as string,
-    name: (row.companies as unknown as { name: string } | null)?.name ?? '—',
-    total_open: row.total_open as number,
-    by_category: row.by_category as Record<string, number>,
-  }));
+  return (data ?? []).map(row => {
+    const company = row.companies as unknown as { name: string; careers_url: string | null } | null;
+    return {
+      company_id: row.company_id as string,
+      name: company?.name ?? '—',
+      careers_url: company?.careers_url ?? null,
+      total_open: row.total_open as number,
+      by_category: row.by_category as Record<string, number>,
+    };
+  });
 }
 
 // ----------------------------------------------------------------------------
@@ -153,6 +160,7 @@ export async function getTopCompanies(limit = 20): Promise<CompanySnapshot[]> {
 interface CompanyMembership {
   id: string;
   name: string;
+  careers_url: string | null;
   indexes: string[] | null;
 }
 
@@ -172,7 +180,7 @@ export async function getAllIndexSeries(days = 90): Promise<IndexSeries[]> {
         .range(0, 49999),
       supabase
         .from('companies')
-        .select('id, name, indexes')
+        .select('id, name, careers_url, indexes')
         .range(0, 999),
     ]);
 
@@ -187,7 +195,10 @@ export async function getAllIndexSeries(days = 90): Promise<IndexSeries[]> {
   // For each (index, date) accumulate total_open, and remember which companies
   // contributed (used to power the "companies in this index" drill-in).
   const byIndexDate = new Map<string, Map<string, number>>(); // index -> (date -> total)
-  const byIndexCompanyLatest = new Map<string, Map<string, { name: string; total: number }>>();
+  const byIndexCompanyLatest = new Map<
+    string,
+    Map<string, { name: string; careers_url: string | null; total: number }>
+  >();
 
   const ensureIndex = (name: string) => {
     if (!byIndexDate.has(name)) byIndexDate.set(name, new Map());
@@ -214,7 +225,9 @@ export async function getAllIndexSeries(days = 90): Promise<IndexSeries[]> {
     const totalDates = byIndexDate.get('Total')!;
     totalDates.set(row.captured_at, (totalDates.get(row.captured_at) ?? 0) + total);
     if (row.captured_at === latestDate) {
-      byIndexCompanyLatest.get('Total')!.set(member.id, { name: member.name, total });
+      byIndexCompanyLatest.get('Total')!.set(member.id, {
+        name: member.name, careers_url: member.careers_url, total,
+      });
     }
 
     for (const idx of member.indexes ?? []) {
@@ -222,7 +235,9 @@ export async function getAllIndexSeries(days = 90): Promise<IndexSeries[]> {
       const dates = byIndexDate.get(idx)!;
       dates.set(row.captured_at, (dates.get(row.captured_at) ?? 0) + total);
       if (row.captured_at === latestDate) {
-        byIndexCompanyLatest.get(idx)!.set(member.id, { name: member.name, total });
+        byIndexCompanyLatest.get(idx)!.set(member.id, {
+          name: member.name, careers_url: member.careers_url, total,
+        });
       }
     }
   }
@@ -244,12 +259,13 @@ export async function getAllIndexSeries(days = 90): Promise<IndexSeries[]> {
     const monthAgo = points[monthAgoIdx].total;
     const delta_30d_pct = monthAgo > 0 ? ((latest - monthAgo) / monthAgo) * 100 : null;
 
-    const companies = Array.from(byIndexCompanyLatest.get(name)?.values() ?? [])
-      .sort((a, b) => b.total - a.total)
-      .map(c => ({ id: '', name: c.name, total_open: c.total }));
+    const constituentEntries = Array.from(byIndexCompanyLatest.get(name)?.entries() ?? []);
+    const companies: IndexConstituent[] = constituentEntries
+      .map(([id, c]) => ({ id, name: c.name, careers_url: c.careers_url, total_open: c.total }))
+      .sort((a, b) => b.total_open - a.total_open);
 
     const description = name === 'Total'
-      ? 'Every tracked company combined — the headline number.'
+      ? "We're not doomed until it's 0."
       : (INDEX_DESCRIPTIONS[name] ?? '');
 
     series.push({ name, description, companies, points, latest, delta_30d_pct });
@@ -266,7 +282,7 @@ export async function getCompanyBySlug(slug: string): Promise<CompanyDetail | nu
   // No slug column — fetch all and match in JS. ~80 rows, trivially fast.
   const { data: companies, error } = await supabase
     .from('companies')
-    .select('id, name, indexes')
+    .select('id, name, careers_url, indexes')
     .range(0, 999);
   if (error) throw error;
 
@@ -296,6 +312,7 @@ export async function getCompanyBySlug(slug: string): Promise<CompanyDetail | nu
     id: match.id as string,
     name: match.name as string,
     slug: slugify(match.name as string),
+    careers_url: (match.careers_url as string | null) ?? null,
     total_open,
     by_category,
     by_seniority,
@@ -327,4 +344,96 @@ export async function getCompanyRoles(companyId: string): Promise<CompanyRole[]>
       posted_at: (row.posted_at as string | null) ?? null,
     };
   });
+}
+
+// ----------------------------------------------------------------------------
+// Role categories — homepage "Top Roles" section + /role/[slug] page
+// ----------------------------------------------------------------------------
+
+// Aggregate the latest day's by_category jsonb across all companies. Returns
+// every category with its total and a preview of the top 5 companies hiring.
+export async function getTopRoles(): Promise<RoleCategorySummary[]> {
+  const date = await getLatestSnapshotDate();
+  if (!date) return [];
+
+  const { data, error } = await supabase
+    .from('snapshots_daily')
+    .select('by_category, companies(name, careers_url)')
+    .eq('captured_at', date)
+    .range(0, 999);
+  if (error) throw error;
+
+  // category -> total, and category -> per-company breakdown
+  const totals = new Map<string, number>();
+  const perCompany = new Map<
+    string,
+    { name: string; careers_url: string | null; count: number }[]
+  >();
+
+  for (const row of data ?? []) {
+    const company = row.companies as unknown as { name: string; careers_url: string | null } | null;
+    if (!company) continue;
+    const byCat = (row.by_category as Record<string, number>) ?? {};
+    for (const [cat, count] of Object.entries(byCat)) {
+      if (cat === 'Other') continue;          // taxonomy bucket — skip
+      if (!count) continue;
+      totals.set(cat, (totals.get(cat) ?? 0) + count);
+      const list = perCompany.get(cat) ?? [];
+      list.push({ name: company.name, careers_url: company.careers_url, count });
+      perCompany.set(cat, list);
+    }
+  }
+
+  return Array.from(totals.entries())
+    .map(([category, total]) => {
+      const companies = (perCompany.get(category) ?? []).sort((a, b) => b.count - a.count);
+      return {
+        category,
+        slug: slugify(category),
+        total,
+        company_count: companies.length,
+        top_companies: companies.slice(0, 5),
+      } satisfies RoleCategorySummary;
+    })
+    .sort((a, b) => b.total - a.total);
+}
+
+// Full list of companies hiring for a role category (powers /role/[slug]).
+export async function getRoleBySlug(slug: string): Promise<RoleCategoryDetail | null> {
+  const summaries = await getTopRoles();
+  const match = summaries.find(s => s.slug === slug);
+  if (!match) return null;
+
+  const date = await getLatestSnapshotDate();
+  if (!date) return { ...match, companies: [] };
+
+  const { data, error } = await supabase
+    .from('snapshots_daily')
+    .select('company_id, by_category, companies(name, careers_url)')
+    .eq('captured_at', date)
+    .range(0, 999);
+  if (error) throw error;
+
+  const companies = (data ?? [])
+    .map(row => {
+      const company = row.companies as unknown as { name: string; careers_url: string | null } | null;
+      const byCat = (row.by_category as Record<string, number>) ?? {};
+      const count = byCat[match.category] ?? 0;
+      if (!company || !count) return null;
+      return {
+        id: row.company_id as string,
+        name: company.name,
+        careers_url: company.careers_url,
+        count,
+      };
+    })
+    .filter((c): c is NonNullable<typeof c> => c !== null)
+    .sort((a, b) => b.count - a.count);
+
+  return {
+    category: match.category,
+    slug: match.slug,
+    total: match.total,
+    companies,
+  };
 }
