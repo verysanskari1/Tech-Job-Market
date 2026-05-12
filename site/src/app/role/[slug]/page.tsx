@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import CompanyLogo from '@/components/CompanyLogo';
+import CareersLink from '@/components/CareersLink';
 import { getRoleBySlug } from '@/lib/queries';
 import { slugify } from '@/lib/slug';
 
@@ -58,28 +59,33 @@ export default async function RolePage({ params }: { params: { slug: string } })
           </h2>
           <div className="bg-surface border border-surface-border rounded-2xl divide-y divide-surface-border">
             {role.companies.map((c, i) => (
-              <Link
+              <div
                 key={c.id}
-                href={`/company/${slugify(c.name)}`}
                 className="flex items-center gap-4 p-4 md:p-5 hover:bg-surface-raised/30 transition-colors group"
               >
                 <span className="text-white/30 text-sm font-sans tabular-nums w-6">{i + 1}</span>
-                <CompanyLogo name={c.name} careersUrl={c.careers_url} size={32} />
-                <div className="flex-1 min-w-0">
-                  <p className="font-sans text-canvas font-medium group-hover:text-aurora transition-colors">
-                    {c.name}
-                  </p>
-                  <div className="h-1 bg-surface-raised rounded-full overflow-hidden mt-1.5 max-w-xs">
-                    <div
-                      className="h-full bg-aurora rounded-full"
-                      style={{ width: `${(c.count / max) * 100}%` }}
-                    />
+                <Link
+                  href={`/company/${slugify(c.name)}`}
+                  className="flex items-center gap-4 flex-1 min-w-0"
+                >
+                  <CompanyLogo name={c.name} careersUrl={c.careers_url} size={32} />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-sans text-canvas font-medium group-hover:text-aurora transition-colors">
+                      {c.name}
+                    </p>
+                    <div className="h-1 bg-surface-raised rounded-full overflow-hidden mt-1.5 max-w-xs">
+                      <div
+                        className="h-full bg-aurora rounded-full"
+                        style={{ width: `${(c.count / max) * 100}%` }}
+                      />
+                    </div>
                   </div>
-                </div>
-                <span className="font-sans text-white/70 text-sm tabular-nums">
+                </Link>
+                <CareersLink href={c.careers_url} label={`${c.name} careers page`} />
+                <span className="font-sans text-white/70 text-sm tabular-nums shrink-0">
                   {c.count} {c.count === 1 ? 'role' : 'roles'}
                 </span>
-              </Link>
+              </div>
             ))}
           </div>
         </section>

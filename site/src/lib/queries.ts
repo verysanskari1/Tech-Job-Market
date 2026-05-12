@@ -3,7 +3,6 @@ import { slugify } from './slug';
 import type {
   CategoryCount,
   CompanyDetail,
-  CompanyRole,
   CompanySnapshot,
   IndexConstituent,
   IndexSeries,
@@ -14,9 +13,20 @@ import type {
   TimeSeriesPoint,
 } from '@/types';
 
-// Punchy one-liners shown under each index name on the dashboard.
+// Short UI labels. DB keeps the verbose names ("AI 50", "India-HQ") — these
+// are display-only overrides for chips & headers.
+export const INDEX_DISPLAY_NAMES: Record<string, string> = {
+  'Total':          'All tech',
+  'AI 50':          'AI',
+  'Early but Hot':  'Hot startups',
+  'Public Tech':    'Public',
+  'India-HQ':       'India',
+};
+
+// Punchy one-liners shown under each chip on hover and below the active one.
 // Keys must match the index names in the `indexes` table.
 export const INDEX_DESCRIPTIONS: Record<string, string> = {
+  'Total':          'Every company we track, rolled up into one number.',
   'AI 50':          'The fifty labs and startups pushing AI from papers to products.',
   'Early but Hot':  'Hyper-growth startups still small enough to feel it.',
   'Public Tech':    'Mature, publicly-traded software companies.',
@@ -25,6 +35,34 @@ export const INDEX_DESCRIPTIONS: Record<string, string> = {
 
 // 'Composite' deliberately omitted — it duplicates the "All tech" total.
 export const INDEX_ORDER = ['AI 50', 'Early but Hot', 'Public Tech', 'India-HQ'];
+
+// P(doom): how doomed are we? Anchored to the 30-day slope so the value
+// always moves with the data:
+//   P(doom) = clamp(0, 1, 0.5 - Δ30d / 30)
+// → +15% / 30 days → 0.00 (no doom, growth)
+// → flat                  → 0.50 (neutral)
+// → -15% / 30 days → 1.00 (maximum doom)
+// Fallback when <30 days of history exist: peak-distance.
+function pDoom(points: TimeSeriesPoint[]): number {
+  if (points.length === 0) return 0;
+  const latest = points[points.length - 1].total;
+
+  // Need at least ~2 weeks of data for a meaningful slope.
+  if (points.length >= 14) {
+    const lookback = Math.min(30, points.length - 1);
+    const baseline = points[points.length - 1 - lookback].total;
+    if (baseline > 0) {
+      const deltaPct = ((latest - baseline) / baseline) * 100; // % change over lookback days
+      return Math.max(0, Math.min(1, 0.5 - deltaPct / 30));
+    }
+  }
+
+  // Fallback: distance from recent peak.
+  let peak = 0;
+  for (const p of points) if (p.total > peak) peak = p.total;
+  if (peak <= 0) return 0;
+  return Math.max(0, Math.min(1, 1 - latest / peak));
+}
 
 export async function getLatestIndexValues(): Promise<IndexValue[]> {
   const { data, error } = await supabase
@@ -89,66 +127,124 @@ export async function getCategoryBreakdown(): Promise<CategoryCount[]> {
     .sort((a, b) => b.count - a.count);
 }
 
-export async function getMovers(minDelta = 3): Promise<Mover[]> {
-  // Get the two most recent snapshot dates
-  const { data: dates, error: datesError } = await supabase
+// Daily movers. If <2 days of snapshots exist (or nothing crossed the
+// threshold), falls back to the top N companies by absolute role count so
+// the ticker is always populated — never shows "no movers yet".
+export async function getMovers(minDelta = 3, fallbackTopN = 30): Promise<Mover[]> {
+  const { data: dates } = await supabase
     .from('snapshots_daily')
     .select('captured_at')
     .order('captured_at', { ascending: false })
     .limit(2);
 
-  if (datesError || !dates || dates.length < 2) return [];
+  // Real movers — only computable with two days of data
+  if (dates && dates.length >= 2) {
+    const [today, yesterday] = [dates[0].captured_at as string, dates[1].captured_at as string];
 
-  const [today, yesterday] = [dates[0].captured_at as string, dates[1].captured_at as string];
+    const [{ data: todayRows }, { data: yesterdayRows }] = await Promise.all([
+      supabase.from('snapshots_daily')
+        .select('company_id, total_open, companies(name)')
+        .eq('captured_at', today)
+        .range(0, 999),
+      supabase.from('snapshots_daily')
+        .select('company_id, total_open')
+        .eq('captured_at', yesterday)
+        .range(0, 999),
+    ]);
 
-  const [{ data: todayRows }, { data: yesterdayRows }] = await Promise.all([
-    supabase.from('snapshots_daily').select('company_id, total_open, companies(name)').eq('captured_at', today),
-    supabase.from('snapshots_daily').select('company_id, total_open').eq('captured_at', yesterday),
-  ]);
+    const prevMap = new Map<string, number>();
+    for (const row of yesterdayRows ?? []) {
+      prevMap.set(row.company_id as string, row.total_open as number);
+    }
 
-  const prevMap = new Map<string, number>();
-  for (const row of yesterdayRows ?? []) {
-    prevMap.set(row.company_id as string, row.total_open as number);
-  }
+    const movers: Mover[] = [];
+    for (const row of todayRows ?? []) {
+      const prev = prevMap.get(row.company_id as string) ?? 0;
+      const delta = (row.total_open as number) - prev;
+      if (Math.abs(delta) >= minDelta) {
+        movers.push({
+          company_id: row.company_id as string,
+          name: (row.companies as unknown as { name: string } | null)?.name ?? '—',
+          total_open: row.total_open as number,
+          delta,
+        });
+      }
+    }
 
-  const movers: Mover[] = [];
-  for (const row of todayRows ?? []) {
-    const prev = prevMap.get(row.company_id as string) ?? 0;
-    const delta = (row.total_open as number) - prev;
-    if (Math.abs(delta) >= minDelta) {
-      movers.push({
-        company_id: row.company_id as string,
-        name: (row.companies as unknown as { name: string } | null)?.name ?? '—',
-        total_open: row.total_open as number,
-        delta,
-      });
+    if (movers.length > 0) {
+      return movers.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
     }
   }
 
-  return movers.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+  // Fallback — surface top companies with delta=0 so the ticker keeps
+  // running. The Chip renders no arrow when delta === 0.
+  const date = dates?.[0]?.captured_at as string | undefined;
+  if (!date) return [];
+
+  const { data: top } = await supabase
+    .from('snapshots_daily')
+    .select('company_id, total_open, companies(name)')
+    .eq('captured_at', date)
+    .order('total_open', { ascending: false })
+    .limit(fallbackTopN);
+
+  return (top ?? []).map(row => ({
+    company_id: row.company_id as string,
+    name: (row.companies as unknown as { name: string } | null)?.name ?? '—',
+    total_open: row.total_open as number,
+    delta: 0,
+  }));
 }
 
-export async function getTopCompanies(limit = 20): Promise<CompanySnapshot[]> {
+export async function getTopCompanies(limit = 20, trendDays = 30): Promise<CompanySnapshot[]> {
   const date = await getLatestSnapshotDate();
   if (!date) return [];
 
-  const { data, error } = await supabase
+  // 1. Top N companies at the latest date
+  const { data: latest, error } = await supabase
     .from('snapshots_daily')
     .select('company_id, total_open, by_category, companies(name, careers_url)')
     .eq('captured_at', date)
     .order('total_open', { ascending: false })
     .limit(limit);
-
   if (error) throw error;
 
-  return (data ?? []).map(row => {
+  const rows = latest ?? [];
+  const ids = rows.map(r => r.company_id as string);
+  if (ids.length === 0) return [];
+
+  // 2. Fetch their trend window in one shot
+  const since = new Date(Date.now() - trendDays * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+
+  const { data: trendRows, error: trendErr } = await supabase
+    .from('snapshots_daily')
+    .select('company_id, captured_at, total_open')
+    .in('company_id', ids)
+    .gte('captured_at', since)
+    .order('captured_at', { ascending: true })
+    .range(0, 49999);
+  if (trendErr) throw trendErr;
+
+  const trendByCompany = new Map<string, TimeSeriesPoint[]>();
+  for (const row of trendRows ?? []) {
+    const id = row.company_id as string;
+    const arr = trendByCompany.get(id) ?? [];
+    arr.push({ date: row.captured_at as string, total: Number(row.total_open) || 0 });
+    trendByCompany.set(id, arr);
+  }
+
+  return rows.map(row => {
     const company = row.companies as unknown as { name: string; careers_url: string | null } | null;
+    const companyId = row.company_id as string;
     return {
-      company_id: row.company_id as string,
+      company_id: companyId,
       name: company?.name ?? '—',
       careers_url: company?.careers_url ?? null,
       total_open: row.total_open as number,
       by_category: row.by_category as Record<string, number>,
+      trend: trendByCompany.get(companyId) ?? [],
     };
   });
 }
@@ -166,7 +262,7 @@ interface CompanyMembership {
 
 // One trip: pull every snapshot in the window + each company's index memberships,
 // then aggregate in JS. Cheap because we have ~80 companies × ~90 days = 7.2k rows.
-export async function getAllIndexSeries(days = 90): Promise<IndexSeries[]> {
+export async function getAllIndexSeries(days = 365): Promise<IndexSeries[]> {
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 10);
@@ -264,11 +360,13 @@ export async function getAllIndexSeries(days = 90): Promise<IndexSeries[]> {
       .map(([id, c]) => ({ id, name: c.name, careers_url: c.careers_url, total_open: c.total }))
       .sort((a, b) => b.total_open - a.total_open);
 
-    const description = name === 'Total'
-      ? "We're not doomed until it's 0."
-      : (INDEX_DESCRIPTIONS[name] ?? '');
+    const description = INDEX_DESCRIPTIONS[name] ?? '';
+    const display_name = INDEX_DISPLAY_NAMES[name] ?? name;
+    const p_doom = pDoom(points);
 
-    series.push({ name, description, companies, points, latest, delta_30d_pct });
+    series.push({
+      name, display_name, description, companies, points, latest, delta_30d_pct, p_doom,
+    });
   }
 
   return series;
@@ -282,7 +380,7 @@ export async function getCompanyBySlug(slug: string): Promise<CompanyDetail | nu
   // No slug column — fetch all and match in JS. ~80 rows, trivially fast.
   const { data: companies, error } = await supabase
     .from('companies')
-    .select('id, name, careers_url, indexes')
+    .select('id, name, careers_url, region, last_funding_stage, employee_count, indexes')
     .range(0, 999);
   if (error) throw error;
 
@@ -313,6 +411,9 @@ export async function getCompanyBySlug(slug: string): Promise<CompanyDetail | nu
     name: match.name as string,
     slug: slugify(match.name as string),
     careers_url: (match.careers_url as string | null) ?? null,
+    region: (match.region as string | null) ?? null,
+    last_funding_stage: (match.last_funding_stage as string | null) ?? null,
+    employee_count: (match.employee_count as number | null) ?? null,
     total_open,
     by_category,
     by_seniority,
@@ -320,31 +421,27 @@ export async function getCompanyBySlug(slug: string): Promise<CompanyDetail | nu
   };
 }
 
-export async function getCompanyRoles(companyId: string): Promise<CompanyRole[]> {
-  // Open roles only (removed_at IS NULL), joined to classified_roles for category.
-  const { data, error } = await supabase
-    .from('raw_roles')
-    .select('id, ats_role_id, title_raw, location, posted_at, classified_roles(category, seniority)')
-    .eq('company_id', companyId)
-    .is('removed_at', null)
-    .order('posted_at', { ascending: false, nullsFirst: false })
-    .range(0, 4999);
+// 90-day time series for a single company's open-role count.
+export async function getCompanyTimeSeries(companyId: string, days = 90): Promise<TimeSeriesPoint[]> {
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
 
+  const { data, error } = await supabase
+    .from('snapshots_daily')
+    .select('captured_at, total_open')
+    .eq('company_id', companyId)
+    .gte('captured_at', since)
+    .order('captured_at', { ascending: true })
+    .range(0, 999);
   if (error) throw error;
 
-  return (data ?? []).map(row => {
-    const cls = row.classified_roles as unknown as { category: string; seniority: string } | null;
-    return {
-      id: row.id as string,
-      ats_role_id: row.ats_role_id as string,
-      title: row.title_raw as string,
-      category: cls?.category ?? null,
-      seniority: cls?.seniority ?? null,
-      location: (row.location as string | null) ?? null,
-      posted_at: (row.posted_at as string | null) ?? null,
-    };
-  });
+  return (data ?? []).map(row => ({
+    date: row.captured_at as string,
+    total: Number(row.total_open) || 0,
+  }));
 }
+
 
 // ----------------------------------------------------------------------------
 // Role categories — homepage "Top Roles" section + /role/[slug] page

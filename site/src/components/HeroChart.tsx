@@ -21,6 +21,14 @@ interface Props {
 
 const INITIAL_CONSTITUENTS = 12;
 
+const RANGES = [
+  { id: '7d',  days: 7,   label: '7D'  },
+  { id: '30d', days: 30,  label: '30D' },
+  { id: '90d', days: 90,  label: '90D' },
+  { id: '1y',  days: 365, label: '1Y'  },
+] as const;
+type RangeId = (typeof RANGES)[number]['id'];
+
 function formatNumber(n: number): string {
   return n.toLocaleString('en-US');
 }
@@ -32,18 +40,36 @@ function formatTickDate(iso: string): string {
 
 export default function HeroChart({ series }: Props) {
   const [activeName, setActiveName] = useState(series[0]?.name ?? 'Total');
+  const [rangeId, setRangeId] = useState<RangeId>('90d');
   const [showAll, setShowAll] = useState(false);
+  const [hoveredChip, setHoveredChip] = useState<string | null>(null);
 
   const active = useMemo(
     () => series.find(s => s.name === activeName) ?? series[0],
     [series, activeName],
   );
 
-  // Reset paginator when toggling indexes
   function selectIndex(name: string) {
     setActiveName(name);
     setShowAll(false);
   }
+
+  // Slice the series to the active range. Recompute the headline number and
+  // delta-vs-period from the slice so the giant number tracks the toggle.
+  const { points, latest, deltaPct, deltaLabel } = useMemo(() => {
+    if (!active) return { points: [], latest: 0, deltaPct: null, deltaLabel: '' };
+    const range = RANGES.find(r => r.id === rangeId) ?? RANGES[2];
+    const sliced = active.points.slice(-range.days);
+    const head = sliced[0]?.total ?? 0;
+    const tail = sliced[sliced.length - 1]?.total ?? active.latest;
+    const pct = head > 0 ? ((tail - head) / head) * 100 : null;
+    return {
+      points: sliced,
+      latest: tail,
+      deltaPct: pct,
+      deltaLabel: `vs ${range.label.toLowerCase()} ago`,
+    };
+  }, [active, rangeId]);
 
   if (!active) {
     return (
@@ -51,11 +77,15 @@ export default function HeroChart({ series }: Props) {
     );
   }
 
-  const positive = (active.delta_30d_pct ?? 0) >= 0;
+  const positive = (deltaPct ?? 0) >= 0;
   const deltaColor = positive ? 'text-cursor' : 'text-ember';
   const deltaArrow = positive ? '▲' : '▼';
   const companyCount = active.companies.length;
   const visible = showAll ? active.companies : active.companies.slice(0, INITIAL_CONSTITUENTS);
+
+  const focusedIndex = hoveredChip
+    ? series.find(s => s.name === hoveredChip) ?? active
+    : active;
 
   return (
     <div className="space-y-10">
@@ -67,29 +97,57 @@ export default function HeroChart({ series }: Props) {
         <p className="text-white/40 text-xs md:text-sm font-sans uppercase tracking-[0.22em]">
           {active.name === 'Total'
             ? `Total open tech roles across ${companyCount} companies`
-            : `${active.name} · ${companyCount} ${companyCount === 1 ? 'company' : 'companies'}`}
+            : `${active.display_name} · ${companyCount} ${companyCount === 1 ? 'company' : 'companies'}`}
         </p>
         <div className="flex items-baseline justify-center gap-4 flex-wrap">
           <span className="font-serif italic text-canvas text-8xl md:text-9xl leading-none tabular-nums">
-            {formatNumber(active.latest)}
+            {formatNumber(latest)}
           </span>
-          {active.delta_30d_pct != null && (
+          {deltaPct != null && (
             <span className={`font-sans font-medium text-base md:text-lg ${deltaColor}`}>
-              {deltaArrow} {Math.abs(active.delta_30d_pct).toFixed(2)}%
-              <span className="text-white/40 ml-1.5">vs 30d ago</span>
+              {deltaArrow} {Math.abs(deltaPct).toFixed(2)}%
+              <span className="text-white/40 ml-1.5">{deltaLabel}</span>
             </span>
           )}
         </div>
-        <p className="font-serif italic text-white/70 text-lg md:text-xl">
-          We&apos;re not doomed until it&apos;s 0.
+        <p
+          className="font-serif italic text-white/70 text-lg md:text-xl inline-flex items-baseline gap-2"
+          title="P(doom) = clamp(0, 1, 0.5 − Δ30d / 30). 0 means hiring is up 15%+ over the last 30 days; 0.5 means flat; 1 means hiring is down 15%+. Always moves with the data."
+        >
+          P<span className="not-italic">(</span>doom<span className="not-italic">)</span>{' '}
+          <span className="not-italic font-sans text-white/40">=</span>{' '}
+          <span className="text-canvas tabular-nums">{active.p_doom.toFixed(2)}</span>
         </p>
       </div>
 
       {/* The graph */}
-      <div className="bg-surface border border-surface-border rounded-2xl p-5 md:p-6">
+      <div className="bg-surface border border-surface-border rounded-2xl p-5 md:p-6 space-y-4">
+        {/* Range segmented control */}
+        <div className="flex justify-end">
+          <div className="inline-flex bg-terminal border border-surface-border rounded-full p-0.5">
+            {RANGES.map(r => {
+              const isActive = r.id === rangeId;
+              return (
+                <button
+                  key={r.id}
+                  onClick={() => setRangeId(r.id)}
+                  className={[
+                    'px-3 py-1 rounded-full text-xs font-sans font-medium transition-colors cursor-pointer',
+                    isActive
+                      ? 'bg-aurora text-terminal'
+                      : 'text-white/50 hover:text-canvas',
+                  ].join(' ')}
+                >
+                  {r.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <div className="h-[340px]">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={active.points} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+            <AreaChart data={points} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="heroFill" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#AEF96C" stopOpacity={0.35} />
@@ -140,31 +198,35 @@ export default function HeroChart({ series }: Props) {
       </div>
 
       {/* Index toggle chips */}
-      <div className="flex flex-wrap justify-center gap-2">
-        {series.map(s => {
-          const isActive = s.name === active.name;
-          const label = s.name === 'Total' ? 'All tech' : s.name;
-          const meta = s.name === 'Total'
-            ? `${s.companies.length} companies`
-            : formatNumber(s.latest);
-          return (
-            <button
-              key={s.name}
-              onClick={() => selectIndex(s.name)}
-              className={[
-                'px-4 py-2 rounded-full text-sm font-sans transition-colors cursor-pointer',
-                isActive
-                  ? 'bg-aurora text-terminal'
-                  : 'bg-surface border border-surface-border text-white/70 hover:text-canvas hover:border-white/30',
-              ].join(' ')}
-            >
-              <span className="font-medium">{label}</span>
-              <span className={isActive ? 'text-terminal/60 ml-2' : 'text-white/40 ml-2'}>
-                {meta}
-              </span>
-            </button>
-          );
-        })}
+      <div className="space-y-3">
+        <div className="flex flex-wrap justify-center gap-2">
+          {series.map(s => {
+            const isActive = s.name === active.name;
+            return (
+              <button
+                key={s.name}
+                onClick={() => selectIndex(s.name)}
+                onMouseEnter={() => setHoveredChip(s.name)}
+                onMouseLeave={() => setHoveredChip(null)}
+                title={s.description}
+                className={[
+                  'px-4 py-2 rounded-full text-sm font-sans transition-colors cursor-pointer',
+                  isActive
+                    ? 'bg-aurora text-terminal'
+                    : 'bg-surface border border-surface-border text-white/70 hover:text-canvas hover:border-white/30',
+                ].join(' ')}
+              >
+                <span className="font-medium">{s.display_name}</span>
+                <span className={isActive ? 'text-terminal/60 ml-2' : 'text-white/40 ml-2'}>
+                  {s.companies.length}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-center text-white/50 font-sans text-sm min-h-[1.25rem] transition-opacity duration-150">
+          {focusedIndex.description}
+        </p>
       </div>
 
       {/* Constituents — top N + show all toggle */}

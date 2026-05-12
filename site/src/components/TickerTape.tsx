@@ -76,6 +76,8 @@ interface ChipProps {
 
 function Chip({ mover }: ChipProps) {
   const [hovered, setHovered] = useState(false);
+  // delta === 0 means "no movers yet" fallback — show the role count instead.
+  const hasDelta = mover.delta !== 0;
   const up = mover.delta > 0;
   const sign = up ? '+' : '';
   const color = up ? 'text-[#00FF7F]' : 'text-[#FF4D4D]';
@@ -90,9 +92,15 @@ function Chip({ mover }: ChipProps) {
       <span className="text-white/60 font-mono text-xs font-semibold tracking-wider">
         {ticker(mover.name)}
       </span>
-      <span className={`${color} font-mono text-xs font-semibold`}>
-        {arrow}{sign}{mover.delta}
-      </span>
+      {hasDelta ? (
+        <span className={`${color} font-mono text-xs font-semibold`}>
+          {arrow}{sign}{mover.delta}
+        </span>
+      ) : (
+        <span className="text-white/40 font-mono text-xs font-semibold tabular-nums">
+          {mover.total_open.toLocaleString()}
+        </span>
+      )}
 
       {hovered && (
         <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 whitespace-nowrap rounded-md bg-[#1a1a1a] border border-white/10 px-3 py-1.5 text-xs font-sans text-white shadow-lg pointer-events-none">
@@ -109,7 +117,7 @@ const SEPARATOR = (
 );
 
 export default function TickerTape({ movers }: { movers: Mover[] }) {
-  const [slow, setSlow] = useState(false);
+  const [paused, setPaused] = useState(false);
   const trackRef = useRef<HTMLDivElement>(null);
 
   if (movers.length === 0) {
@@ -128,14 +136,15 @@ export default function TickerTape({ movers }: { movers: Mover[] }) {
   return (
     <div
       className="border-b border-surface-border bg-terminal overflow-hidden h-9 flex items-center"
-      onMouseEnter={() => setSlow(true)}
-      onMouseLeave={() => setSlow(false)}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
     >
       <div
         ref={trackRef}
         className="flex items-center whitespace-nowrap"
         style={{
-          animation: `ticker-scroll ${slow ? '60s' : '30s'} linear infinite`,
+          animation: 'ticker-scroll 60s linear infinite',
+          animationPlayState: paused ? 'paused' : 'running',
         }}
       >
         {items.map((m, i) => (

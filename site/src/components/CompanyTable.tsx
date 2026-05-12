@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import CompanyLogo from '@/components/CompanyLogo';
+import CareersLink from '@/components/CareersLink';
+import Sparkline from '@/components/Sparkline';
 import { slugify } from '@/lib/slug';
 import type { CompanySnapshot } from '@/types';
 
@@ -68,6 +70,7 @@ export default function CompanyTable({ companies }: { companies: CompanySnapshot
             <th className="text-left text-white/40 font-medium pb-3 pr-4 w-8">#</th>
             <th className="text-left text-white/40 font-medium pb-3 pr-4">Company</th>
             <th className="text-right text-white/40 font-medium pb-3 pr-4">Open roles</th>
+            <th className="text-left text-white/40 font-medium pb-3 pr-4 hidden md:table-cell">30d</th>
             <th className="text-left text-white/40 font-medium pb-3">Top category</th>
           </tr>
         </thead>
@@ -81,19 +84,25 @@ export default function CompanyTable({ companies }: { companies: CompanySnapshot
             >
               <td className="py-3 pr-4 text-white/30 tabular-nums">{i + 1}</td>
               <td className="py-3 pr-4 relative">
-                <Link
-                  href={`/company/${slugify(co.name)}`}
-                  className="flex items-center gap-3 text-canvas hover:text-aurora transition-colors group"
-                >
-                  <CompanyLogo name={co.name} careersUrl={co.careers_url} size={24} />
-                  <span className="font-medium underline decoration-transparent group-hover:decoration-aurora/60 underline-offset-4 transition-colors">
-                    {co.name}
-                  </span>
-                </Link>
+                <div className="flex items-center gap-2">
+                  <Link
+                    href={`/company/${slugify(co.name)}`}
+                    className="flex items-center gap-3 text-canvas hover:text-aurora transition-colors group"
+                  >
+                    <CompanyLogo name={co.name} careersUrl={co.careers_url} size={24} />
+                    <span className="font-medium underline decoration-transparent group-hover:decoration-aurora/60 underline-offset-4 transition-colors">
+                      {co.name}
+                    </span>
+                  </Link>
+                  <CareersLink href={co.careers_url} label={`${co.name} careers page`} />
+                </div>
                 {hovered === co.company_id && <HoverPreview co={co} />}
               </td>
               <td className="py-3 pr-4 text-right text-white/80 tabular-nums">
                 {co.total_open.toLocaleString()}
+              </td>
+              <td className="py-3 pr-4 hidden md:table-cell">
+                <Sparkline data={co.trend} width={96} height={28} />
               </td>
               <td className="py-3">
                 <Link
