@@ -3,7 +3,6 @@ import { slugify } from './slug';
 import type {
   CategoryCount,
   CompanyDetail,
-  CompanyRole,
   CompanySnapshot,
   IndexConstituent,
   IndexSeries,
@@ -14,9 +13,20 @@ import type {
   TimeSeriesPoint,
 } from '@/types';
 
-// Punchy one-liners shown under each index name on the dashboard.
+// Short UI labels. DB keeps the verbose names ("AI 50", "India-HQ") — these
+// are display-only overrides for chips & headers.
+export const INDEX_DISPLAY_NAMES: Record<string, string> = {
+  'Total':          'All tech',
+  'AI 50':          'AI',
+  'Early but Hot':  'Hot startups',
+  'Public Tech':    'Public',
+  'India-HQ':       'India',
+};
+
+// Punchy one-liners shown under each chip on hover and below the active one.
 // Keys must match the index names in the `indexes` table.
 export const INDEX_DESCRIPTIONS: Record<string, string> = {
+  'Total':          'Every company we track, rolled up into one number.',
   'AI 50':          'The fifty labs and startups pushing AI from papers to products.',
   'Early but Hot':  'Hyper-growth startups still small enough to feel it.',
   'Public Tech':    'Mature, publicly-traded software companies.',
@@ -25,6 +35,17 @@ export const INDEX_DESCRIPTIONS: Record<string, string> = {
 
 // 'Composite' deliberately omitted — it duplicates the "All tech" total.
 export const INDEX_ORDER = ['AI 50', 'Early but Hot', 'Public Tech', 'India-HQ'];
+
+// P(doom): how far the current number sits below the recent peak.
+// 0 = at the peak (no doom), 1 = at zero (fully doomed). Always in [0, 1].
+function pDoom(points: TimeSeriesPoint[]): number {
+  if (points.length === 0) return 0;
+  let peak = 0;
+  for (const p of points) if (p.total > peak) peak = p.total;
+  if (peak <= 0) return 0;
+  const latest = points[points.length - 1].total;
+  return Math.max(0, Math.min(1, 1 - latest / peak));
+}
 
 export async function getLatestIndexValues(): Promise<IndexValue[]> {
   const { data, error } = await supabase
@@ -264,11 +285,13 @@ export async function getAllIndexSeries(days = 90): Promise<IndexSeries[]> {
       .map(([id, c]) => ({ id, name: c.name, careers_url: c.careers_url, total_open: c.total }))
       .sort((a, b) => b.total_open - a.total_open);
 
-    const description = name === 'Total'
-      ? "We're not doomed until it's 0."
-      : (INDEX_DESCRIPTIONS[name] ?? '');
+    const description = INDEX_DESCRIPTIONS[name] ?? '';
+    const display_name = INDEX_DISPLAY_NAMES[name] ?? name;
+    const p_doom = pDoom(points);
 
-    series.push({ name, description, companies, points, latest, delta_30d_pct });
+    series.push({
+      name, display_name, description, companies, points, latest, delta_30d_pct, p_doom,
+    });
   }
 
   return series;
@@ -282,7 +305,7 @@ export async function getCompanyBySlug(slug: string): Promise<CompanyDetail | nu
   // No slug column — fetch all and match in JS. ~80 rows, trivially fast.
   const { data: companies, error } = await supabase
     .from('companies')
-    .select('id, name, careers_url, indexes')
+    .select('id, name, careers_url, region, last_funding_stage, employee_count, indexes')
     .range(0, 999);
   if (error) throw error;
 
@@ -313,6 +336,9 @@ export async function getCompanyBySlug(slug: string): Promise<CompanyDetail | nu
     name: match.name as string,
     slug: slugify(match.name as string),
     careers_url: (match.careers_url as string | null) ?? null,
+    region: (match.region as string | null) ?? null,
+    last_funding_stage: (match.last_funding_stage as string | null) ?? null,
+    employee_count: (match.employee_count as number | null) ?? null,
     total_open,
     by_category,
     by_seniority,
@@ -320,31 +346,27 @@ export async function getCompanyBySlug(slug: string): Promise<CompanyDetail | nu
   };
 }
 
-export async function getCompanyRoles(companyId: string): Promise<CompanyRole[]> {
-  // Open roles only (removed_at IS NULL), joined to classified_roles for category.
-  const { data, error } = await supabase
-    .from('raw_roles')
-    .select('id, ats_role_id, title_raw, location, posted_at, classified_roles(category, seniority)')
-    .eq('company_id', companyId)
-    .is('removed_at', null)
-    .order('posted_at', { ascending: false, nullsFirst: false })
-    .range(0, 4999);
+// 90-day time series for a single company's open-role count.
+export async function getCompanyTimeSeries(companyId: string, days = 90): Promise<TimeSeriesPoint[]> {
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
 
+  const { data, error } = await supabase
+    .from('snapshots_daily')
+    .select('captured_at, total_open')
+    .eq('company_id', companyId)
+    .gte('captured_at', since)
+    .order('captured_at', { ascending: true })
+    .range(0, 999);
   if (error) throw error;
 
-  return (data ?? []).map(row => {
-    const cls = row.classified_roles as unknown as { category: string; seniority: string } | null;
-    return {
-      id: row.id as string,
-      ats_role_id: row.ats_role_id as string,
-      title: row.title_raw as string,
-      category: cls?.category ?? null,
-      seniority: cls?.seniority ?? null,
-      location: (row.location as string | null) ?? null,
-      posted_at: (row.posted_at as string | null) ?? null,
-    };
-  });
+  return (data ?? []).map(row => ({
+    date: row.captured_at as string,
+    total: Number(row.total_open) || 0,
+  }));
 }
+
 
 // ----------------------------------------------------------------------------
 // Role categories — homepage "Top Roles" section + /role/[slug] page

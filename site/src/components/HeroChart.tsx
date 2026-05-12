@@ -33,13 +33,13 @@ function formatTickDate(iso: string): string {
 export default function HeroChart({ series }: Props) {
   const [activeName, setActiveName] = useState(series[0]?.name ?? 'Total');
   const [showAll, setShowAll] = useState(false);
+  const [hoveredChip, setHoveredChip] = useState<string | null>(null);
 
   const active = useMemo(
     () => series.find(s => s.name === activeName) ?? series[0],
     [series, activeName],
   );
 
-  // Reset paginator when toggling indexes
   function selectIndex(name: string) {
     setActiveName(name);
     setShowAll(false);
@@ -57,6 +57,11 @@ export default function HeroChart({ series }: Props) {
   const companyCount = active.companies.length;
   const visible = showAll ? active.companies : active.companies.slice(0, INITIAL_CONSTITUENTS);
 
+  // Index for the hover description (falls back to active when nothing is hovered)
+  const focusedIndex = hoveredChip
+    ? series.find(s => s.name === hoveredChip) ?? active
+    : active;
+
   return (
     <div className="space-y-10">
       {/* Centered hero block */}
@@ -67,7 +72,7 @@ export default function HeroChart({ series }: Props) {
         <p className="text-white/40 text-xs md:text-sm font-sans uppercase tracking-[0.22em]">
           {active.name === 'Total'
             ? `Total open tech roles across ${companyCount} companies`
-            : `${active.name} · ${companyCount} ${companyCount === 1 ? 'company' : 'companies'}`}
+            : `${active.display_name} · ${companyCount} ${companyCount === 1 ? 'company' : 'companies'}`}
         </p>
         <div className="flex items-baseline justify-center gap-4 flex-wrap">
           <span className="font-serif italic text-canvas text-8xl md:text-9xl leading-none tabular-nums">
@@ -80,8 +85,13 @@ export default function HeroChart({ series }: Props) {
             </span>
           )}
         </div>
-        <p className="font-serif italic text-white/70 text-lg md:text-xl">
-          We&apos;re not doomed until it&apos;s 0.
+        <p
+          className="font-serif italic text-white/70 text-lg md:text-xl group inline-flex items-baseline gap-2"
+          title="P(doom) = 1 − current / peak open roles in the last 90 days. 0 means we're at the peak; 1 means everyone stopped hiring."
+        >
+          P<span className="not-italic">(</span>doom<span className="not-italic">)</span>{' '}
+          <span className="not-italic font-sans text-white/40">=</span>{' '}
+          <span className="text-canvas tabular-nums">{active.p_doom.toFixed(2)}</span>
         </p>
       </div>
 
@@ -140,31 +150,36 @@ export default function HeroChart({ series }: Props) {
       </div>
 
       {/* Index toggle chips */}
-      <div className="flex flex-wrap justify-center gap-2">
-        {series.map(s => {
-          const isActive = s.name === active.name;
-          const label = s.name === 'Total' ? 'All tech' : s.name;
-          const meta = s.name === 'Total'
-            ? `${s.companies.length} companies`
-            : formatNumber(s.latest);
-          return (
-            <button
-              key={s.name}
-              onClick={() => selectIndex(s.name)}
-              className={[
-                'px-4 py-2 rounded-full text-sm font-sans transition-colors cursor-pointer',
-                isActive
-                  ? 'bg-aurora text-terminal'
-                  : 'bg-surface border border-surface-border text-white/70 hover:text-canvas hover:border-white/30',
-              ].join(' ')}
-            >
-              <span className="font-medium">{label}</span>
-              <span className={isActive ? 'text-terminal/60 ml-2' : 'text-white/40 ml-2'}>
-                {meta}
-              </span>
-            </button>
-          );
-        })}
+      <div className="space-y-3">
+        <div className="flex flex-wrap justify-center gap-2">
+          {series.map(s => {
+            const isActive = s.name === active.name;
+            return (
+              <button
+                key={s.name}
+                onClick={() => selectIndex(s.name)}
+                onMouseEnter={() => setHoveredChip(s.name)}
+                onMouseLeave={() => setHoveredChip(null)}
+                title={s.description}
+                className={[
+                  'px-4 py-2 rounded-full text-sm font-sans transition-colors cursor-pointer',
+                  isActive
+                    ? 'bg-aurora text-terminal'
+                    : 'bg-surface border border-surface-border text-white/70 hover:text-canvas hover:border-white/30',
+                ].join(' ')}
+              >
+                <span className="font-medium">{s.display_name}</span>
+                <span className={isActive ? 'text-terminal/60 ml-2' : 'text-white/40 ml-2'}>
+                  {s.companies.length}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        {/* One-liner about the focused (or active) index */}
+        <p className="text-center text-white/50 font-sans text-sm min-h-[1.25rem] transition-opacity duration-150">
+          {focusedIndex.description}
+        </p>
       </div>
 
       {/* Constituents — top N + show all toggle */}

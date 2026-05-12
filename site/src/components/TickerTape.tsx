@@ -109,7 +109,7 @@ const SEPARATOR = (
 );
 
 export default function TickerTape({ movers }: { movers: Mover[] }) {
-  const [slow, setSlow] = useState(false);
+  const [paused, setPaused] = useState(false);
   const trackRef = useRef<HTMLDivElement>(null);
 
   if (movers.length === 0) {
@@ -128,14 +128,15 @@ export default function TickerTape({ movers }: { movers: Mover[] }) {
   return (
     <div
       className="border-b border-surface-border bg-terminal overflow-hidden h-9 flex items-center"
-      onMouseEnter={() => setSlow(true)}
-      onMouseLeave={() => setSlow(false)}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
     >
       <div
         ref={trackRef}
         className="flex items-center whitespace-nowrap"
         style={{
-          animation: `ticker-scroll ${slow ? '60s' : '30s'} linear infinite`,
+          animation: 'ticker-scroll 60s linear infinite',
+          animationPlayState: paused ? 'paused' : 'running',
         }}
       >
         {items.map((m, i) => (

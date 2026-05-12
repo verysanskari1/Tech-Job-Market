@@ -39,12 +39,14 @@ export interface IndexConstituent {
 }
 
 export interface IndexSeries {
-  name: string;        // 'Total' for the all-up series, otherwise index name
+  name: string;          // 'Total' for the all-up series, otherwise index name
+  display_name: string;  // Short, human label for chips/UI (e.g. 'AI' instead of 'AI 50')
   description: string;
   companies: IndexConstituent[];
   points: TimeSeriesPoint[];
   latest: number;
   delta_30d_pct: number | null;
+  p_doom: number;        // 0..1 — 1 - latest / max(points within window)
 }
 
 export interface RoleCategorySummary {
@@ -67,18 +69,12 @@ export interface CompanyDetail {
   name: string;
   slug: string;
   careers_url: string | null;
+  region: string | null;
+  last_funding_stage: string | null;
+  employee_count: number | null;
   total_open: number;
   by_category: Record<string, number>;
   by_seniority: Record<string, number>;
   indexes: string[];
 }
 
-export interface CompanyRole {
-  id: string;
-  ats_role_id: string;
-  title: string;
-  category: string | null;
-  seniority: string | null;
-  location: string | null;
-  posted_at: string | null;
-}

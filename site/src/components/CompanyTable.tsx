@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import CompanyLogo from '@/components/CompanyLogo';
+import CareersLink from '@/components/CareersLink';
 import { slugify } from '@/lib/slug';
 import type { CompanySnapshot } from '@/types';
 
@@ -81,15 +82,18 @@ export default function CompanyTable({ companies }: { companies: CompanySnapshot
             >
               <td className="py-3 pr-4 text-white/30 tabular-nums">{i + 1}</td>
               <td className="py-3 pr-4 relative">
-                <Link
-                  href={`/company/${slugify(co.name)}`}
-                  className="flex items-center gap-3 text-canvas hover:text-aurora transition-colors group"
-                >
-                  <CompanyLogo name={co.name} careersUrl={co.careers_url} size={24} />
-                  <span className="font-medium underline decoration-transparent group-hover:decoration-aurora/60 underline-offset-4 transition-colors">
-                    {co.name}
-                  </span>
-                </Link>
+                <div className="flex items-center gap-2">
+                  <Link
+                    href={`/company/${slugify(co.name)}`}
+                    className="flex items-center gap-3 text-canvas hover:text-aurora transition-colors group"
+                  >
+                    <CompanyLogo name={co.name} careersUrl={co.careers_url} size={24} />
+                    <span className="font-medium underline decoration-transparent group-hover:decoration-aurora/60 underline-offset-4 transition-colors">
+                      {co.name}
+                    </span>
+                  </Link>
+                  <CareersLink href={co.careers_url} label={`${co.name} careers page`} />
+                </div>
                 {hovered === co.company_id && <HoverPreview co={co} />}
               </td>
               <td className="py-3 pr-4 text-right text-white/80 tabular-nums">
