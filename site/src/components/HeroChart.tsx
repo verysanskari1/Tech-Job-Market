@@ -62,7 +62,7 @@ export default function HeroChart({ series }: Props) {
       {/* Centered hero block */}
       <div className="text-center space-y-4 max-w-3xl mx-auto">
         <h1 className="font-serif italic text-canvas text-5xl md:text-6xl lg:text-7xl leading-[1.05]">
-          The <span className="text-aurora">Doomberg</span> Index
+          The <span className="text-aurora">Doomberg</span> Terminal
         </h1>
         <p className="text-white/40 text-xs md:text-sm font-sans uppercase tracking-[0.22em]">
           {active.name === 'Total'

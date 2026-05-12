@@ -1,4 +1,4 @@
-# The Doomberg Index — UI / Interaction Spec
+# The Doomberg Terminal — UI / Interaction Spec
 
 A self-contained brief you can paste into Vercel v0, Lovable, Figma Make, or
 any other AI design tool to regenerate this homepage. Written in plain
@@ -8,7 +8,7 @@ language; no React-isms.
 
 ## 1. Brand & feel
 
-- **Name:** The Doomberg Index
+- **Name:** The Doomberg Terminal
 - **Tagline:** "We're not doomed until it's 0."
 - **What it is:** A live ticker for the number of open software-engineering
   roles across the world's most relevant tech companies. Modelled on how a
@@ -66,7 +66,7 @@ Rules:
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │                       [centered hero]                           │
-│                       The Doomberg Index                        │
+│                       The Doomberg Terminal                        │
 │                                                                 │
 │              TOTAL OPEN TECH ROLES ACROSS 80 COMPANIES          │
 │                                                                 │
@@ -135,7 +135,7 @@ Everything in the hero block is **center-aligned** and capped at 768px max
 width. Sequence top-to-bottom:
 
 1. **Brand title.**
-   - `The Doomberg Index` (with "Doomberg" colored `aurora`).
+   - `The Doomberg Terminal` (with "Doomberg" colored `aurora`).
    - Font: Newsreader **italic**, weight 400.
    - Size: 56px (desktop) / 48px (mobile).
    - Line-height: 1.05.
