@@ -1,5 +1,4 @@
 {
-  "actorInputSchema": 1,
   "title": "Classifier Agent Input",
   "type": "object",
   "schemaVersion": 1,
