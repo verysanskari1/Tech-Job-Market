@@ -17,6 +17,7 @@ export interface CompanySnapshot {
   careers_url: string | null;
   total_open: number;
   by_category: Record<string, number>;
+  trend: TimeSeriesPoint[]; // last ~30 days for the inline sparkline
 }
 
 export interface Mover {
