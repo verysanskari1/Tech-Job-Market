@@ -14,8 +14,8 @@ export const revalidate = 3600; // ISR — revalidate every hour
 
 export default async function DashboardPage() {
   const [series, companies, roles, movers] = await Promise.all([
-    getAllIndexSeries(90),
-    getTopCompanies(40),
+    getAllIndexSeries(365),
+    getTopCompanies(40, 30),
     getTopRoles(),
     getMovers(3),
   ]);

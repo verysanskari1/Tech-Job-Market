@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import CompanyLogo from '@/components/CompanyLogo';
 import CareersLink from '@/components/CareersLink';
+import Sparkline from '@/components/Sparkline';
 import { slugify } from '@/lib/slug';
 import type { CompanySnapshot } from '@/types';
 
@@ -69,6 +70,7 @@ export default function CompanyTable({ companies }: { companies: CompanySnapshot
             <th className="text-left text-white/40 font-medium pb-3 pr-4 w-8">#</th>
             <th className="text-left text-white/40 font-medium pb-3 pr-4">Company</th>
             <th className="text-right text-white/40 font-medium pb-3 pr-4">Open roles</th>
+            <th className="text-left text-white/40 font-medium pb-3 pr-4 hidden md:table-cell">30d</th>
             <th className="text-left text-white/40 font-medium pb-3">Top category</th>
           </tr>
         </thead>
@@ -98,6 +100,9 @@ export default function CompanyTable({ companies }: { companies: CompanySnapshot
               </td>
               <td className="py-3 pr-4 text-right text-white/80 tabular-nums">
                 {co.total_open.toLocaleString()}
+              </td>
+              <td className="py-3 pr-4 hidden md:table-cell">
+                <Sparkline data={co.trend} width={96} height={28} />
               </td>
               <td className="py-3">
                 <Link
