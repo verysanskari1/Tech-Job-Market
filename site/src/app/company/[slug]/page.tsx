@@ -1,10 +1,10 @@
 import { notFound } from 'next/navigation';
-import Image from 'next/image';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
+import CompanyLogo from '@/components/CompanyLogo';
 import CompanyRoleList from '@/components/CompanyRoleList';
 import { getCompanyBySlug, getCompanyRoles } from '@/lib/queries';
-import { logoUrl } from '@/lib/logos';
+import { slugify } from '@/lib/slug';
 
 export const revalidate = 3600;
 
@@ -32,13 +32,11 @@ export default async function CompanyPage({ params }: { params: { slug: string }
         {/* Header */}
         <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
           <div className="flex items-center gap-5">
-            <Image
-              src={logoUrl(company.name)}
-              alt={`${company.name} logo`}
-              width={72}
-              height={72}
-              className="rounded-2xl bg-canvas/5 border border-surface-border"
-              unoptimized
+            <CompanyLogo
+              name={company.name}
+              careersUrl={company.careers_url}
+              size={72}
+              className="border border-surface-border"
             />
             <div className="space-y-2">
               <h1 className="font-serif italic text-canvas text-5xl md:text-6xl leading-none">
@@ -71,9 +69,13 @@ export default async function CompanyPage({ params }: { params: { slug: string }
             </h2>
             <div className="space-y-2.5">
               {categories.map(([cat, count]) => (
-                <div key={cat} className="space-y-1">
+                <Link
+                  key={cat}
+                  href={`/role/${slugify(cat)}`}
+                  className="block space-y-1 group"
+                >
                   <div className="flex items-baseline justify-between text-sm font-sans">
-                    <span className="text-white/80">{cat}</span>
+                    <span className="text-white/80 group-hover:text-aurora transition-colors">{cat}</span>
                     <span className="text-white/40 tabular-nums">{count}</span>
                   </div>
                   <div className="h-1.5 bg-surface-raised rounded-full overflow-hidden">
@@ -82,7 +84,7 @@ export default async function CompanyPage({ params }: { params: { slug: string }
                       style={{ width: `${(count / maxCat) * 100}%` }}
                     />
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </section>

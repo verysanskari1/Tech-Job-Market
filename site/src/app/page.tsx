@@ -2,18 +2,21 @@ import Navbar from '@/components/Navbar';
 import HeroChart from '@/components/HeroChart';
 import CompanyTable from '@/components/CompanyTable';
 import TickerTape from '@/components/TickerTape';
+import TopRoles from '@/components/TopRoles';
 import {
   getAllIndexSeries,
   getTopCompanies,
+  getTopRoles,
   getMovers,
 } from '@/lib/queries';
 
 export const revalidate = 3600; // ISR — revalidate every hour
 
 export default async function DashboardPage() {
-  const [series, companies, movers] = await Promise.all([
+  const [series, companies, roles, movers] = await Promise.all([
     getAllIndexSeries(90),
     getTopCompanies(40),
+    getTopRoles(),
     getMovers(3),
   ]);
 
@@ -22,30 +25,32 @@ export default async function DashboardPage() {
       <Navbar />
       <TickerTape movers={movers} />
 
-      <main className="max-w-7xl mx-auto px-6 py-10 md:py-14 space-y-16">
+      <main className="max-w-7xl mx-auto px-6 py-10 md:py-16 space-y-20">
 
-        {/* Brand strap-line */}
-        <section className="space-y-3">
-          <h1 className="font-serif italic text-canvas text-4xl md:text-5xl leading-tight">
-            The <span className="text-aurora not-italic font-sans font-medium">Doomberg</span> Index
-          </h1>
-          <p className="text-white/50 font-sans text-base max-w-2xl">
-            A live ticker of open software roles across the companies actually building things.
-            Tech isn&apos;t <em className="font-serif italic text-white/80">doomed</em> — until this number is zero.
-          </p>
-        </section>
-
-        {/* Hero: total roles + chart + toggles + constituents */}
+        {/* Hero (centered): brand, total roles, chart, toggles, constituents */}
         <HeroChart series={series} />
 
-        {/* Top companies */}
-        <section className="space-y-4">
-          <div className="flex items-baseline justify-between">
-            <h2 className="text-canvas font-sans font-semibold text-lg md:text-xl">
-              Top companies <span className="text-white/40 font-normal italic font-serif">by open roles</span>
+        {/* Top Roles */}
+        <section id="roles" className="space-y-5 scroll-mt-20">
+          <div className="space-y-1">
+            <h2 className="font-serif italic text-canvas text-3xl md:text-4xl">
+              Top roles hiring
             </h2>
-            <p className="text-white/40 text-xs font-sans uppercase tracking-widest">
-              Hover for breakdown · click to drill in
+            <p className="font-sans text-white/50 text-sm md:text-base">
+              Click any role to see every company hiring for it.
+            </p>
+          </div>
+          <TopRoles roles={roles.slice(0, 12)} />
+        </section>
+
+        {/* Top Companies */}
+        <section id="companies" className="space-y-5 scroll-mt-20">
+          <div className="space-y-1">
+            <h2 className="font-serif italic text-canvas text-3xl md:text-4xl">
+              Top companies
+            </h2>
+            <p className="font-sans text-white/50 text-sm md:text-base">
+              The 40 companies with the most open software roles right now.
             </p>
           </div>
           <div className="bg-surface border border-surface-border rounded-2xl p-4 md:p-6">

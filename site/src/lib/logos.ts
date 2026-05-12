@@ -109,3 +109,26 @@ export function logoUrl(companyName: string): string {
   const domain = DOMAIN_OVERRIDES[key] ?? `${key.replace(/\s+/g, '')}.com`;
   return `https://logo.clearbit.com/${domain}`;
 }
+
+// Resolve a company to a bare hostname. Priority:
+//  1. careers_url, after stripping common "careers./jobs./apply./boards." prefixes
+//  2. our hardcoded override map (DOMAIN_OVERRIDES)
+//  3. heuristic: `${slug}.com`
+// Returns null only if everything fails (shouldn't happen given the slug fallback).
+export function domainFor(name: string, careersUrl: string | null): string | null {
+  if (careersUrl) {
+    try {
+      const url = new URL(careersUrl);
+      let host = url.hostname.toLowerCase();
+      host = host.replace(/^(careers|jobs|apply|boards|hire|work|talent|join)\./, '');
+      host = host.replace(/^www\./, '');
+      if (host && host.includes('.')) return host;
+    } catch {
+      // fall through
+    }
+  }
+  const key = name.toLowerCase().trim();
+  if (DOMAIN_OVERRIDES[key]) return DOMAIN_OVERRIDES[key];
+  const guess = `${key.replace(/\s+/g, '')}.com`;
+  return guess;
+}

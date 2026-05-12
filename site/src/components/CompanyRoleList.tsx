@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { slugify } from '@/lib/slug';
 import type { CompanyRole } from '@/types';
 
 interface Props {
@@ -103,7 +104,7 @@ export default function CompanyRoleList({ roles, companySlug }: Props) {
           filtered.map(role => (
             <div
               key={role.id}
-              className="p-4 md:p-5 flex flex-col md:flex-row md:items-center gap-3 md:gap-5 hover:bg-surface-raised/40 transition-colors"
+              className="group p-4 md:p-5 flex flex-col md:flex-row md:items-center gap-3 md:gap-5 hover:bg-surface-raised/40 transition-colors"
             >
               <div className="flex-1 min-w-0 space-y-1">
                 <p className="font-sans text-canvas text-sm md:text-base font-medium truncate">
@@ -111,9 +112,12 @@ export default function CompanyRoleList({ roles, companySlug }: Props) {
                 </p>
                 <div className="flex flex-wrap items-center gap-2 text-xs font-sans text-white/40">
                   {role.category && (
-                    <span className="bg-surface-raised border border-surface-border rounded-md px-2 py-0.5 text-white/70">
+                    <a
+                      href={`/role/${slugify(role.category)}`}
+                      className="bg-surface-raised border border-surface-border rounded-md px-2 py-0.5 text-white/70 hover:text-canvas hover:border-white/40 transition-colors"
+                    >
                       {role.category}
-                    </span>
+                    </a>
                   )}
                   {role.seniority && <span>{role.seniority}</span>}
                   {role.location && <span>· {role.location}</span>}
@@ -122,7 +126,7 @@ export default function CompanyRoleList({ roles, companySlug }: Props) {
               </div>
               <a
                 href={`/interview/${companySlug}/${role.id}`}
-                className="shrink-0 inline-flex items-center justify-center gap-1.5 bg-aurora text-terminal font-sans text-xs font-semibold px-4 py-2 rounded-full hover:bg-cursor transition-colors"
+                className="shrink-0 inline-flex items-center justify-center gap-1.5 bg-aurora text-terminal font-sans text-xs font-semibold px-4 py-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-cursor"
               >
                 Take a mock interview →
               </a>
