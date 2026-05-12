@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import type { AuditSummary, GitHubFileInfo, PrResult } from './types.js';
+import type { AuditSummary, GitHubFileInfo, PrResult, ScraperCompanyResult, ScraperHealthSummary } from './types.js';
 
 // ------------------------------------------------------------------
 // Tool: get_audit_summary
@@ -205,4 +205,135 @@ export async function createPromptPatchPr(
   const prData = (await prRes.json()) as { html_url: string; number: number };
 
   return { url: prData.html_url, number: prData.number, branch };
+}
+
+// ------------------------------------------------------------------
+// Tool: check_scraper_health
+// ------------------------------------------------------------------
+const GAP_ABS_THRESHOLD = 10;
+const GAP_PCT_THRESHOLD = 0.15;
+
+async function liveCount(ats: string, handle: string): Promise<number> {
+  if (ats === 'greenhouse') {
+    const res = await fetch(`https://boards-api.greenhouse.io/v1/boards/${handle}/jobs`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json() as { jobs?: unknown[] };
+    return (data.jobs ?? []).length;
+  }
+
+  if (ats === 'lever') {
+    const res = await fetch(`https://api.lever.co/v0/postings/${handle}?mode=json`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json() as unknown[];
+    return (data ?? []).length;
+  }
+
+  if (ats === 'ashby') {
+    const res = await fetch(`https://api.ashbyhq.com/posting-api/job-board/${handle}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json() as { jobs?: unknown[]; jobPostings?: unknown[] };
+    return (data.jobs ?? data.jobPostings ?? []).length;
+  }
+
+  if (ats === 'smartrecruiters') {
+    const res = await fetch(`https://api.smartrecruiters.com/v1/companies/${handle}/postings?limit=1`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json() as { totalFound?: number; content?: unknown[] };
+    return data.totalFound ?? (data.content ?? []).length;
+  }
+
+  if (ats === 'workday') {
+    const [host, site] = handle.split(':');
+    if (!host || !site) throw new Error('workday handle must be "host:site"');
+    const tenant = host.split('.')[0];
+    const res = await fetch(`https://${host}.myworkdayjobs.com/wday/cxs/${tenant}/${site}/jobs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ appliedFacets: {}, limit: 1, offset: 0, searchText: '' }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json() as { total?: number; jobPostings?: unknown[] };
+    return data.total ?? (data.jobPostings ?? []).length;
+  }
+
+  if (ats === 'icims') {
+    const url = `https://${handle}.icims.com/jobs/search?ss=1&pr=0&in_iframe=1`;
+    const res = await fetch(url, {
+      headers: {
+        Accept: 'text/html,application/xhtml+xml',
+        'User-Agent': 'Mozilla/5.0 (compatible; tech-job-market-scraper/1.0)',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const html = await res.text();
+    const patterns = [
+      /of\s+(\d+)\s+results?/i,
+      /(\d+)\s+results?\s+found/i,
+      /(\d+)\s+open\s+positions?/i,
+      /of\s+(\d+)\s*<\//i,
+    ];
+    for (const re of patterns) {
+      const m = html.match(re);
+      if (m) return Number(m[1]);
+    }
+    throw new Error('iCIMS: could not find results count in HTML');
+  }
+
+  throw new Error(`unknown ATS "${ats}"`);
+}
+
+export async function checkScraperHealth(supabaseUrl: string, supabaseKey: string): Promise<ScraperHealthSummary> {
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  const { data: companies, error } = await supabase
+    .from('companies')
+    .select('id, name, ats, ats_handle')
+    .order('name');
+
+  if (error) throw new Error(`Failed to load companies: ${error.message}`);
+
+  const results: ScraperCompanyResult[] = [];
+
+  for (const company of companies as Array<{ id: string; name: string; ats: string; ats_handle: string }>) {
+    const { count: dbCount } = await supabase
+      .from('raw_roles')
+      .select('id', { count: 'exact', head: true })
+      .eq('company_id', company.id)
+      .is('removed_at', null);
+
+    const db = dbCount ?? 0;
+
+    if (company.ats === 'custom') {
+      results.push({ company: company.name, ats: company.ats, live: null, db, gap: null, gapPct: null, status: 'skip', note: 'no public API' });
+      continue;
+    }
+
+    let live: number;
+    try {
+      live = await liveCount(company.ats, company.ats_handle);
+    } catch (err) {
+      results.push({ company: company.name, ats: company.ats, live: null, db, gap: null, gapPct: null, status: 'error', note: (err as Error).message });
+      continue;
+    }
+
+    const gap = live - db;
+    const gapPct = live > 0 ? Math.abs(gap) / live : 0;
+    const isWarn = Math.abs(gap) > GAP_ABS_THRESHOLD && gapPct > GAP_PCT_THRESHOLD;
+
+    const note = isWarn
+      ? gap > 0 ? `ATS has +${gap} roles vs DB` : `DB has +${Math.abs(gap)} extra roles (stale removals?)`
+      : '';
+
+    results.push({ company: company.name, ats: company.ats, live, db, gap, gapPct, status: isWarn ? 'warn' : 'ok', note });
+
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  return {
+    ok: results.filter(r => r.status === 'ok').length,
+    warnings: results.filter(r => r.status === 'warn').length,
+    errors: results.filter(r => r.status === 'error').length,
+    skipped: results.filter(r => r.status === 'skip').length,
+    companies: results,
+  };
 }

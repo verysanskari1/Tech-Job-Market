@@ -1,6 +1,6 @@
 import { Actor, log } from 'apify';
 import Anthropic from '@anthropic-ai/sdk';
-import { getAuditSummary, getCurrentClassifierPrompt, createPromptPatchPr } from './tools.js';
+import { getAuditSummary, getCurrentClassifierPrompt, createPromptPatchPr, checkScraperHealth } from './tools.js';
 
 await Actor.init();
 
@@ -34,6 +34,16 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 // Tool definitions for Claude
 // ------------------------------------------------------------------
 const tools: Anthropic.Tool[] = [
+  {
+    name: 'check_scraper_health',
+    description:
+      'Checks every company in the DB against its live ATS job count. Returns a summary of warnings (ATS has significantly more roles than DB — scraper may be falling behind) and errors (ATS unreachable). Custom-ATS companies are skipped since they have no public API.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {},
+      required: [],
+    },
+  },
   {
     name: 'get_audit_summary',
     description:
@@ -78,24 +88,32 @@ const tools: Anthropic.Tool[] = [
 // ------------------------------------------------------------------
 // Agent system prompt
 // ------------------------------------------------------------------
-const SYSTEM_PROMPT = `You are a classification quality agent for a tech job market index. Your job is to monitor audit results and improve the classifier when accuracy is low.
+const SYSTEM_PROMPT = `You are a pipeline health agent for a tech job market index. You monitor two things: (1) whether the scraper is keeping the DB in sync with company ATS job boards, and (2) whether the classifier is labelling roles correctly.
 
 Follow these steps in order:
 
-1. Call get_audit_summary to see the latest audit results.
-2. If the disagreement rate is at or below ${DISAGREEMENT_THRESHOLD} (${Math.round(DISAGREEMENT_THRESHOLD * 100)}%), the classifier is healthy. Say so and stop — do NOT create a PR.
-3. If the disagreement rate exceeds ${DISAGREEMENT_THRESHOLD} (${Math.round(DISAGREEMENT_THRESHOLD * 100)}%), proceed:
+## Step 1 — Scraper health
+Call check_scraper_health. Report any warnings (large gaps between ATS live count and DB count) and errors (ATS unreachable). Skipped companies (custom ATS) need no action.
+
+## Step 2 — Classifier health
+Call get_audit_summary to see the latest audit results.
+
+## Step 3 — Fix classifier if needed
+- If the disagreement rate is at or below ${DISAGREEMENT_THRESHOLD} (${Math.round(DISAGREEMENT_THRESHOLD * 100)}%), the classifier is healthy. Say so and stop — do NOT create a PR.
+- If the disagreement rate exceeds ${DISAGREEMENT_THRESHOLD} (${Math.round(DISAGREEMENT_THRESHOLD * 100)}%):
    a. Call get_current_classifier_prompt to read the current SYSTEM_PROMPT.
    b. Analyse which category definitions are causing the most confusion based on the top disputed titles. Be specific — reference actual title patterns.
-   c. Draft an improved SYSTEM_PROMPT that fixes the ambiguous definitions. Preserve all categories and the overall structure; only refine the definitions and edge cases where confusion was observed.
+   c. Draft an improved SYSTEM_PROMPT that fixes the ambiguous definitions. Preserve all categories and the overall structure; only refine definitions and edge cases where confusion was observed.
    d. Call create_prompt_patch_pr with your improved prompt and a clear reasoning summary.
-4. Report what you did and why.
+
+## Step 4 — Final report
+Summarise both checks: scraper status and classifier status. Note any action taken (PR opened) or recommended (scraper needs rerun for specific companies).
 
 Rules:
 - Never invent disputed patterns that aren't in the data.
-- Never remove a category — only clarify definitions or add edge-case examples.
-- Keep the prompt concise — do not bloat it with redundant text.
-- The SYSTEM_PROMPT must end with the instruction "Respond only with a raw JSON object — no markdown, no code fences, no explanation." (preserve this line exactly).`;
+- Never remove a classifier category — only clarify definitions or add edge-case examples.
+- Keep the classifier prompt concise — do not bloat it with redundant text.
+- The SYSTEM_PROMPT must end with "Respond only with a raw JSON object — no markdown, no code fences, no explanation." (preserve this line exactly).`;
 
 // ------------------------------------------------------------------
 // Agentic loop
@@ -157,7 +175,11 @@ while (continueLoop && iteration < MAX_ITERATIONS) {
     let resultContent: string;
 
     try {
-      if (toolUse.name === 'get_audit_summary') {
+      if (toolUse.name === 'check_scraper_health') {
+        const health = await checkScraperHealth(supabaseUrl, supabaseKey);
+        resultContent = JSON.stringify(health, null, 2);
+        log.info(`Scraper health: ${health.ok} ok, ${health.warnings} warnings, ${health.errors} errors, ${health.skipped} skipped`);
+      } else if (toolUse.name === 'get_audit_summary') {
         const summary = await getAuditSummary(supabaseUrl, supabaseKey);
         resultContent = JSON.stringify(summary, null, 2);
         log.info(`Audit summary: ${summary.totalAudited} audited, ${Math.round(summary.disagreementRate * 100)}% disagreement rate`);
