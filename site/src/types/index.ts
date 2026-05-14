@@ -81,3 +81,16 @@ export interface CompanyDetail {
   indexes: string[];
 }
 
+export type NewsCategory = 'layoff' | 'funding' | 'product' | 'other';
+
+export interface NewsItem {
+  id: string;
+  company_slug: string | null;   // null = industry-wide
+  company_name: string | null;
+  title: string;
+  url: string;
+  source: string;                 // 'TechCrunch', 'Layoffs.fyi', etc.
+  category: NewsCategory;
+  published_at: string;           // ISO date
+}
+

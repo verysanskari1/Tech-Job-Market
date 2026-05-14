@@ -4,7 +4,9 @@ import Navbar from '@/components/Navbar';
 import CompanyLogo from '@/components/CompanyLogo';
 import CareersLink from '@/components/CareersLink';
 import CompanyTrend from '@/components/CompanyTrend';
+import NewsFeed from '@/components/NewsFeed';
 import { getCompanyBySlug, getCompanyTimeSeries } from '@/lib/queries';
+import { getMockNewsForCompany } from '@/lib/news-mock';
 import { slugify } from '@/lib/slug';
 
 export const revalidate = 3600;
@@ -30,6 +32,7 @@ export default async function CompanyPage({ params }: { params: { slug: string }
   if (!company) notFound();
 
   const trend = await getCompanyTimeSeries(company.id, 365);
+  const news = getMockNewsForCompany(company.slug, 8);
 
   const categories = (Object.entries(company.by_category) as [string, number][])
     .filter(([cat]) => cat !== 'Other')
@@ -158,6 +161,18 @@ export default async function CompanyPage({ params }: { params: { slug: string }
             </section>
           );
         })()}
+
+        {/* News for this company */}
+        {news.length > 0 && (
+          <section className="space-y-4">
+            <h2 className="text-canvas font-sans font-semibold text-lg">
+              In the news <em className="font-serif italic font-normal text-white/60">at {company.name}</em>
+            </h2>
+            <div className="bg-surface border border-surface-border rounded-2xl px-5">
+              <NewsFeed items={news} showCompany={false} />
+            </div>
+          </section>
+        )}
 
         {/* Careers CTA */}
         {company.careers_url && (
