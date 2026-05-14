@@ -57,6 +57,7 @@ export interface RoleCategorySummary {
   total: number;
   company_count: number;
   top_companies: { name: string; careers_url: string | null; count: number }[];
+  trend: TimeSeriesPoint[];  // last ~7 days, summed across all companies
 }
 
 export interface RoleCategoryDetail {

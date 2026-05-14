@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { domainFor, LOGO_URL_OVERRIDES } from '@/lib/logos';
+import { slugify } from '@/lib/slug';
 
 interface Props {
   name: string;
@@ -37,21 +38,32 @@ function initials(name: string) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+// Resolution priority:
+//   1. /logos/{slug}.svg   — drop a hand-curated SVG here for any company
+//                            and it wins. 404s fall through silently.
+//   2. LOGO_URL_OVERRIDES  — hardcoded URL per company (e.g. CDN PNG)
+//   3. Google favicon @ 256px
+//   4. Newsreader letter avatar
 export default function CompanyLogo({ name, careersUrl, size = 24, className = '' }: Props) {
-  const [failed, setFailed] = useState(false);
+  const [stage, setStage] = useState<0 | 1 | 2 | 3>(0);
 
-  const explicit = LOGO_URL_OVERRIDES[name.toLowerCase().trim()];
+  const slug = slugify(name);
+  const key = name.toLowerCase().trim();
+  const explicit = LOGO_URL_OVERRIDES[key];
   const domain = domainFor(name, careersUrl ?? null);
-  // Hard override beats favicon proxy. Otherwise Google's favicon service
-  // returns sharp PNGs up to 256px (much higher-res than DDG's 16/32px .ico).
-  const targetPx = Math.max(64, size * 4);
-  const src = explicit
-    ? explicit
-    : domain
-      ? `https://www.google.com/s2/favicons?domain=${domain}&sz=${targetPx}`
-      : null;
+  // Google's favicon service. 256 is the practical ceiling — most company
+  // favicons cap out around 64–128 at the source, but ask for max anyway.
+  const faviconUrl = domain
+    ? `https://www.google.com/s2/favicons?domain=${domain}&sz=256`
+    : null;
 
-  if (!src || failed) {
+  // Build the resolution chain so onError can advance to the next URL.
+  const chain: string[] = [];
+  chain.push(`/logos/${slug}.svg`);
+  if (explicit) chain.push(explicit);
+  if (faviconUrl) chain.push(faviconUrl);
+
+  if (stage >= chain.length) {
     const { bg, fg } = paletteFor(name);
     return (
       <span
@@ -72,16 +84,19 @@ export default function CompanyLogo({ name, careersUrl, size = 24, className = '
     );
   }
 
+  const src = chain[stage];
+
   // Plain <img> intentional — bypasses next/image's domain restriction and
-  // lets us fall through to the letter avatar on any network failure.
+  // lets us advance through the fallback chain on any network failure.
   // eslint-disable-next-line @next/next/no-img-element
   return (
     <img
+      key={src}
       src={src}
       alt=""
       width={size}
       height={size}
-      onError={() => setFailed(true)}
+      onError={() => setStage(s => (s + 1) as 0 | 1 | 2 | 3)}
       className={`shrink-0 rounded-md bg-canvas/5 ${className}`}
       style={{ width: size, height: size, objectFit: 'contain' }}
     />

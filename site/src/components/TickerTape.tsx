@@ -97,7 +97,7 @@ function Chip({ mover }: ChipProps) {
       </span>
 
       {hovered && (
-        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 whitespace-nowrap rounded-md bg-[#1a1a1a] border border-white/10 px-3 py-1.5 text-xs font-sans text-white shadow-lg pointer-events-none flex items-center gap-3">
+        <span className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 whitespace-nowrap rounded-md bg-[#1a1a1a] border border-white/10 px-3 py-1.5 text-xs font-sans text-white shadow-lg pointer-events-none flex items-center gap-3">
           <span className="font-semibold">{mover.name}</span>
           <span className="text-white/50 tabular-nums">{mover.total_open.toLocaleString()} open roles</span>
           <span className={`${color} font-medium tabular-nums`}>
