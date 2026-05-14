@@ -104,6 +104,14 @@ const DOMAIN_OVERRIDES: Record<string, string> = {
   'retool':             'retool.com',
 };
 
+// Hard-coded logo URLs for companies where favicon services return the wrong
+// or low-res image. Key = lowercased company name. Falls back to favicon
+// proxy if not listed here.
+export const LOGO_URL_OVERRIDES: Record<string, string> = {
+  // Razorpay's favicon is outdated/wrong on most proxies — use their CDN logo.
+  'razorpay': 'https://razorpay.com/favicon.png',
+};
+
 export function logoUrl(companyName: string): string {
   const key = companyName.toLowerCase().trim();
   const domain = DOMAIN_OVERRIDES[key] ?? `${key.replace(/\s+/g, '')}.com`;

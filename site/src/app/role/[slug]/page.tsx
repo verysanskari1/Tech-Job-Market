@@ -38,20 +38,6 @@ export default async function RolePage({ params }: { params: { slug: string } })
           </p>
         </header>
 
-        {/* CTA strip */}
-        <div className="bg-surface border border-surface-border rounded-2xl p-6 flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <p className="font-sans font-medium text-canvas">Practice for {role.category} interviews</p>
-            <p className="font-sans text-white/50 text-sm">Get a tailored mock interview based on real role descriptions.</p>
-          </div>
-          <a
-            href={`/interview/role/${role.slug}`}
-            className="shrink-0 inline-flex items-center gap-1.5 bg-aurora text-terminal font-sans text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-cursor transition-colors"
-          >
-            Take a mock interview →
-          </a>
-        </div>
-
         {/* Companies hiring */}
         <section className="space-y-3">
           <h2 className="font-sans font-semibold text-canvas text-lg">
@@ -81,7 +67,7 @@ export default async function RolePage({ params }: { params: { slug: string } })
                     </div>
                   </div>
                 </Link>
-                <CareersLink href={c.careers_url} label={`${c.name} careers page`} />
+                <CareersLink companyName={c.name} href={c.careers_url} />
                 <span className="font-sans text-white/70 text-sm tabular-nums shrink-0">
                   {c.count} {c.count === 1 ? 'role' : 'roles'}
                 </span>
