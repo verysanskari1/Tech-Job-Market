@@ -78,7 +78,7 @@ export default function MiniTrendChart({ data, height = 220 }: Props) {
             }}
             labelStyle={{ color: '#9b9bb0', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em' }}
             labelFormatter={formatTickDate}
-            formatter={(value: number) => [formatNumber(value), 'Open roles']}
+            formatter={(value: number) => [formatNumber(value), 'Open tech roles']}
           />
           <Area
             type="monotone"

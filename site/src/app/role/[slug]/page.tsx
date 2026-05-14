@@ -29,7 +29,7 @@ export default async function RolePage({ params }: { params: { slug: string } })
         {/* Header */}
         <header className="text-center space-y-3 max-w-3xl mx-auto">
           <p className="text-white/40 text-xs md:text-sm font-sans uppercase tracking-[0.22em]">
-            Open roles · {role.category}
+            Open tech roles · {role.category}
           </p>
           <h1 className="font-serif italic text-canvas text-5xl md:text-7xl leading-none tabular-nums">
             {role.total.toLocaleString()}

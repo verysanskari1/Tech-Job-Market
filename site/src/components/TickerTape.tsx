@@ -99,7 +99,7 @@ function Chip({ mover }: ChipProps) {
       {hovered && (
         <span className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 whitespace-nowrap rounded-md bg-[#1a1a1a] border border-white/10 px-3 py-1.5 text-xs font-sans text-white shadow-lg pointer-events-none flex items-center gap-3">
           <span className="font-semibold">{mover.name}</span>
-          <span className="text-white/50 tabular-nums">{mover.total_open.toLocaleString()} open roles</span>
+          <span className="text-white/50 tabular-nums">{mover.total_open.toLocaleString()} open tech roles</span>
           <span className={`${color} font-medium tabular-nums`}>
             {sign}{mover.delta} in 7d
           </span>
@@ -121,7 +121,7 @@ export default function TickerTape({ movers }: { movers: Mover[] }) {
     return (
       <div className="border-b border-surface-border bg-terminal h-9 flex items-center px-6">
         <span className="text-white/20 font-mono text-xs">
-          No movers yet — check back after the next scraper run
+          No movers yet. Check back after the next scraper run.
         </span>
       </div>
     );

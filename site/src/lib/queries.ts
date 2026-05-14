@@ -15,9 +15,12 @@ import type {
 } from '@/types';
 
 // Short UI labels. DB keeps the verbose names ("AI 50", "India-HQ") — these
-// are display-only overrides for chips & headers.
+// are display-only overrides for chips & headers. Composite maps to All tech
+// because some companies still carry the legacy 'Composite' tag in their
+// indexes[] array even though the index itself was dropped from the toggle.
 export const INDEX_DISPLAY_NAMES: Record<string, string> = {
   'Total':          'All tech',
+  'Composite':      'All tech',
   'AI 50':          'AI-first',
   'Early but Hot':  'Hot startups',
   'Public Tech':    'Public',

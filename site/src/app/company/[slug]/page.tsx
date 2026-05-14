@@ -4,8 +4,8 @@ import Navbar from '@/components/Navbar';
 import CompanyLogo from '@/components/CompanyLogo';
 import CareersLink from '@/components/CareersLink';
 import CompanyTrend from '@/components/CompanyTrend';
-import NewsFeed from '@/components/NewsFeed';
-import { getCompanyBySlug, getCompanyTimeSeries } from '@/lib/queries';
+import NewsRotator from '@/components/NewsRotator';
+import { getCompanyBySlug, getCompanyTimeSeries, INDEX_DISPLAY_NAMES } from '@/lib/queries';
 import { getMockNewsForCompany } from '@/lib/news-mock';
 import { slugify } from '@/lib/slug';
 
@@ -83,7 +83,7 @@ export default async function CompanyPage({ params }: { params: { slug: string }
                 <div className="flex flex-wrap gap-1.5">
                   {company.indexes.map(idx => (
                     <span key={idx} className="text-[11px] font-sans text-white/50 bg-surface border border-surface-border rounded-full px-2.5 py-0.5">
-                      {idx}
+                      {INDEX_DISPLAY_NAMES[idx] ?? idx}
                     </span>
                   ))}
                 </div>
@@ -91,7 +91,7 @@ export default async function CompanyPage({ params }: { params: { slug: string }
             </div>
           </div>
           <div className="text-right">
-            <p className="text-white/40 text-xs font-sans uppercase tracking-[0.18em] mb-1">Open roles</p>
+            <p className="text-white/40 text-xs font-sans uppercase tracking-[0.18em] mb-1">Open tech roles</p>
             <p className="font-serif italic text-aurora text-6xl leading-none tabular-nums">
               {formatNumber(company.total_open)}
             </p>
@@ -130,7 +130,7 @@ export default async function CompanyPage({ params }: { params: { slug: string }
           return (
             <section className="bg-surface border border-surface-border rounded-2xl p-6 space-y-4">
               <h2 className="text-canvas font-sans font-semibold text-sm uppercase tracking-wider">
-                Roles by <em className="font-serif italic font-normal text-white/60">category</em>
+                Tech roles by <em className="font-serif italic font-normal text-white/60">category</em>
               </h2>
               <div className="space-y-2.5">
                 {categories.map(([cat, count]) => {
@@ -162,15 +162,23 @@ export default async function CompanyPage({ params }: { params: { slug: string }
           );
         })()}
 
-        {/* News for this company */}
+        {/* News for this company — same rotator as the homepage */}
         {news.length > 0 && (
           <section className="space-y-4">
             <h2 className="text-canvas font-sans font-semibold text-lg">
               In the news <em className="font-serif italic font-normal text-white/60">at {company.name}</em>
             </h2>
-            <div className="bg-surface border border-surface-border rounded-2xl px-5">
-              <NewsFeed items={news} showCompany={false} />
-            </div>
+            <NewsRotator
+              items={news}
+              companyStats={{
+                [company.slug]: {
+                  total_open: company.total_open,
+                  delta_7d: trend.length >= 8
+                    ? trend[trend.length - 1].total - trend[trend.length - 8].total
+                    : null,
+                },
+              }}
+            />
           </section>
         )}
 
