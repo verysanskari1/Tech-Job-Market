@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { slugify } from './slug';
+import { bestCareersUrl } from './careers';
 import type {
   CategoryCount,
   CompanyDetail,
@@ -207,7 +208,7 @@ export async function getTopCompanies(limit = 20, trendDays = 30): Promise<Compa
   // 1. Top N companies at the latest date
   const { data: latest, error } = await supabase
     .from('snapshots_daily')
-    .select('company_id, total_open, by_category, companies(name, careers_url)')
+    .select('company_id, total_open, by_category, companies(name, careers_url, ats, ats_handle)')
     .eq('captured_at', date)
     .order('total_open', { ascending: false })
     .limit(limit);
@@ -240,12 +241,23 @@ export async function getTopCompanies(limit = 20, trendDays = 30): Promise<Compa
   }
 
   return rows.map(row => {
-    const company = row.companies as unknown as { name: string; careers_url: string | null } | null;
+    const company = row.companies as unknown as {
+      name: string;
+      careers_url: string | null;
+      ats: string | null;
+      ats_handle: string | null;
+    } | null;
     const companyId = row.company_id as string;
+    const name = company?.name ?? '—';
     return {
       company_id: companyId,
-      name: company?.name ?? '—',
-      careers_url: company?.careers_url ?? null,
+      name,
+      careers_url: bestCareersUrl({
+        careersUrl: company?.careers_url ?? null,
+        ats: company?.ats ?? null,
+        atsHandle: company?.ats_handle ?? null,
+        name,
+      }),
       total_open: row.total_open as number,
       by_category: row.by_category as Record<string, number>,
       trend: trendByCompany.get(companyId) ?? [],
@@ -261,6 +273,8 @@ interface CompanyMembership {
   id: string;
   name: string;
   careers_url: string | null;
+  ats: string | null;
+  ats_handle: string | null;
   indexes: string[] | null;
 }
 
@@ -280,7 +294,7 @@ export async function getAllIndexSeries(days = 365): Promise<IndexSeries[]> {
         .range(0, 49999),
       supabase
         .from('companies')
-        .select('id, name, careers_url, indexes')
+        .select('id, name, careers_url, ats, ats_handle, indexes')
         .range(0, 999),
     ]);
 
@@ -326,7 +340,14 @@ export async function getAllIndexSeries(days = 365): Promise<IndexSeries[]> {
     totalDates.set(row.captured_at, (totalDates.get(row.captured_at) ?? 0) + total);
     if (row.captured_at === latestDate) {
       byIndexCompanyLatest.get('Total')!.set(member.id, {
-        name: member.name, careers_url: member.careers_url, total,
+        name: member.name,
+        careers_url: bestCareersUrl({
+          careersUrl: member.careers_url,
+          ats: member.ats,
+          atsHandle: member.ats_handle,
+          name: member.name,
+        }),
+        total,
       });
     }
 
@@ -336,7 +357,14 @@ export async function getAllIndexSeries(days = 365): Promise<IndexSeries[]> {
       dates.set(row.captured_at, (dates.get(row.captured_at) ?? 0) + total);
       if (row.captured_at === latestDate) {
         byIndexCompanyLatest.get(idx)!.set(member.id, {
-          name: member.name, careers_url: member.careers_url, total,
+          name: member.name,
+        careers_url: bestCareersUrl({
+          careersUrl: member.careers_url,
+          ats: member.ats,
+          atsHandle: member.ats_handle,
+          name: member.name,
+        }),
+        total,
         });
       }
     }
@@ -384,7 +412,7 @@ export async function getCompanyBySlug(slug: string): Promise<CompanyDetail | nu
   // No slug column — fetch all and match in JS. ~80 rows, trivially fast.
   const { data: companies, error } = await supabase
     .from('companies')
-    .select('id, name, careers_url, region, last_funding_stage, employee_count, indexes')
+    .select('id, name, careers_url, ats, ats_handle, region, last_funding_stage, employee_count, indexes')
     .range(0, 999);
   if (error) throw error;
 
@@ -410,11 +438,17 @@ export async function getCompanyBySlug(slug: string): Promise<CompanyDetail | nu
     }
   }
 
+  const name = match.name as string;
   return {
     id: match.id as string,
-    name: match.name as string,
-    slug: slugify(match.name as string),
-    careers_url: (match.careers_url as string | null) ?? null,
+    name,
+    slug: slugify(name),
+    careers_url: bestCareersUrl({
+      careersUrl: (match.careers_url as string | null) ?? null,
+      ats: (match.ats as string | null) ?? null,
+      atsHandle: (match.ats_handle as string | null) ?? null,
+      name,
+    }),
     region: (match.region as string | null) ?? null,
     last_funding_stage: (match.last_funding_stage as string | null) ?? null,
     employee_count: (match.employee_count as number | null) ?? null,
@@ -459,7 +493,7 @@ export async function getTopRoles(): Promise<RoleCategorySummary[]> {
 
   const { data, error } = await supabase
     .from('snapshots_daily')
-    .select('by_category, companies(name, careers_url)')
+    .select('by_category, companies(name, careers_url, ats, ats_handle)')
     .eq('captured_at', date)
     .range(0, 999);
   if (error) throw error;
@@ -472,15 +506,26 @@ export async function getTopRoles(): Promise<RoleCategorySummary[]> {
   >();
 
   for (const row of data ?? []) {
-    const company = row.companies as unknown as { name: string; careers_url: string | null } | null;
+    const company = row.companies as unknown as {
+      name: string;
+      careers_url: string | null;
+      ats: string | null;
+      ats_handle: string | null;
+    } | null;
     if (!company) continue;
+    const careersUrl = bestCareersUrl({
+      careersUrl: company.careers_url,
+      ats: company.ats,
+      atsHandle: company.ats_handle,
+      name: company.name,
+    });
     const byCat = (row.by_category as Record<string, number>) ?? {};
     for (const [cat, count] of Object.entries(byCat)) {
       if (cat === 'Other') continue;          // taxonomy bucket — skip
       if (!count) continue;
       totals.set(cat, (totals.get(cat) ?? 0) + count);
       const list = perCompany.get(cat) ?? [];
-      list.push({ name: company.name, careers_url: company.careers_url, count });
+      list.push({ name: company.name, careers_url: careersUrl, count });
       perCompany.set(cat, list);
     }
   }
@@ -510,21 +555,31 @@ export async function getRoleBySlug(slug: string): Promise<RoleCategoryDetail | 
 
   const { data, error } = await supabase
     .from('snapshots_daily')
-    .select('company_id, by_category, companies(name, careers_url)')
+    .select('company_id, by_category, companies(name, careers_url, ats, ats_handle)')
     .eq('captured_at', date)
     .range(0, 999);
   if (error) throw error;
 
   const companies = (data ?? [])
     .map(row => {
-      const company = row.companies as unknown as { name: string; careers_url: string | null } | null;
+      const company = row.companies as unknown as {
+        name: string;
+        careers_url: string | null;
+        ats: string | null;
+        ats_handle: string | null;
+      } | null;
       const byCat = (row.by_category as Record<string, number>) ?? {};
       const count = byCat[match.category] ?? 0;
       if (!company || !count) return null;
       return {
         id: row.company_id as string,
         name: company.name,
-        careers_url: company.careers_url,
+        careers_url: bestCareersUrl({
+          careersUrl: company.careers_url,
+          ats: company.ats,
+          atsHandle: company.ats_handle,
+          name: company.name,
+        }),
         count,
       };
     })
