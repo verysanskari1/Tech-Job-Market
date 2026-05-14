@@ -457,8 +457,37 @@ export async function getCompanyBySlug(slug: string): Promise<CompanyDetail | nu
   };
 }
 
-// 90-day time series for a single company's open-role count.
-export async function getCompanyTimeSeries(companyId: string, days = 90): Promise<TimeSeriesPoint[]> {
+// Time series for a single role category, summed daily across all companies.
+// Used by /role/[slug] to render a 7D/1M/YTD trend chart.
+export async function getRoleTimeSeries(category: string, days = 365): Promise<TimeSeriesPoint[]> {
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+
+  const { data, error } = await supabase
+    .from('snapshots_daily')
+    .select('captured_at, by_category')
+    .gte('captured_at', since)
+    .order('captured_at', { ascending: true })
+    .range(0, 49999);
+  if (error) throw error;
+
+  const byDate = new Map<string, number>();
+  for (const row of data ?? []) {
+    const byCat = (row.by_category as Record<string, number>) ?? {};
+    const count = byCat[category] ?? 0;
+    if (!count) continue;
+    const d = row.captured_at as string;
+    byDate.set(d, (byDate.get(d) ?? 0) + count);
+  }
+
+  return Array.from(byDate.entries())
+    .map(([date, total]) => ({ date, total }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// Time series for a single company's open-role count.
+export async function getCompanyTimeSeries(companyId: string, days = 365): Promise<TimeSeriesPoint[]> {
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 10);

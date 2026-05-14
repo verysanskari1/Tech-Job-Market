@@ -3,7 +3,8 @@ import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import CompanyLogo from '@/components/CompanyLogo';
 import CareersLink from '@/components/CareersLink';
-import { getRoleBySlug } from '@/lib/queries';
+import CompanyTrend from '@/components/CompanyTrend';
+import { getRoleBySlug, getRoleTimeSeries } from '@/lib/queries';
 import { slugify } from '@/lib/slug';
 
 export const revalidate = 3600;
@@ -12,6 +13,7 @@ export default async function RolePage({ params }: { params: { slug: string } })
   const role = await getRoleBySlug(params.slug);
   if (!role) notFound();
 
+  const trend = await getRoleTimeSeries(role.category, 365);
   const max = role.companies[0]?.count ?? 1;
 
   return (
@@ -37,6 +39,16 @@ export default async function RolePage({ params }: { params: { slug: string } })
             <span className="text-aurora not-italic font-sans font-medium">{role.companies.length}</span> companies.
           </p>
         </header>
+
+        {/* Hiring trend */}
+        <section className="space-y-4">
+          <h2 className="text-canvas font-sans font-semibold text-lg">
+            Hiring trend <em className="font-serif italic font-normal text-white/60">for {role.category}</em>
+          </h2>
+          <div className="bg-surface border border-surface-border rounded-2xl p-5 md:p-6">
+            <CompanyTrend data={trend} />
+          </div>
+        </section>
 
         {/* Companies hiring */}
         <section className="space-y-3">
