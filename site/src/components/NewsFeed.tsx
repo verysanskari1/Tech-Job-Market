@@ -41,42 +41,37 @@ export default function NewsFeed({ items, showCompany = true, compact = false }:
       {items.map(item => {
         const cat = CATEGORY_META[item.category];
         return (
-          <li key={item.id} className={compact ? 'py-3' : 'py-4'}>
+          <li key={item.id} className={compact ? 'py-3 space-y-1.5' : 'py-4 space-y-1.5'}>
+            {/* Category + date + source */}
+            <div className="flex items-center gap-2 text-[10px] font-sans uppercase tracking-[0.16em]">
+              <span className={`rounded-full border px-2 py-0.5 font-medium ${cat.classes}`}>
+                {cat.label}
+              </span>
+              <span className="text-white/30">{formatDate(item.published_at)}</span>
+              <span className="text-white/20">·</span>
+              <span className="text-white/30">{item.source}</span>
+            </div>
+
+            {/* Title — the primary link, opens the source article in a new tab */}
             <a
               href={item.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="group block space-y-1.5"
+              className={`block font-sans text-canvas hover:text-aurora transition-colors leading-snug ${compact ? 'text-sm' : 'text-sm md:text-base'}`}
             >
-              {/* Category + date + source */}
-              <div className="flex items-center gap-2 text-[10px] font-sans uppercase tracking-[0.16em]">
-                <span className={`rounded-full border px-2 py-0.5 font-medium ${cat.classes}`}>
-                  {cat.label}
-                </span>
-                <span className="text-white/30">{formatDate(item.published_at)}</span>
-                <span className="text-white/20">·</span>
-                <span className="text-white/30">{item.source}</span>
-              </div>
-
-              {/* Title */}
-              <p className={`font-sans text-canvas group-hover:text-aurora transition-colors leading-snug ${compact ? 'text-sm' : 'text-sm md:text-base'}`}>
-                {item.title}
-              </p>
-
-              {/* Company link */}
-              {showCompany && item.company_slug && item.company_name && (
-                <div className="pt-0.5">
-                  <Link
-                    href={`/company/${item.company_slug}`}
-                    onClick={e => e.stopPropagation()}
-                    className="inline-flex items-center gap-1.5 text-xs font-sans text-white/50 hover:text-canvas transition-colors"
-                  >
-                    <CompanyLogo name={item.company_name} size={14} />
-                    {item.company_name}
-                  </Link>
-                </div>
-              )}
+              {item.title}
             </a>
+
+            {/* Company — separate link, sits as a sibling so no anchor nesting */}
+            {showCompany && item.company_slug && item.company_name && (
+              <Link
+                href={`/company/${item.company_slug}`}
+                className="inline-flex items-center gap-1.5 text-xs font-sans text-white/50 hover:text-canvas transition-colors"
+              >
+                <CompanyLogo name={item.company_name} size={14} />
+                {item.company_name}
+              </Link>
+            )}
           </li>
         );
       })}
