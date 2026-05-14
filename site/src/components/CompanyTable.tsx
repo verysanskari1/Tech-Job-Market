@@ -51,8 +51,11 @@ function HoverPreview({ co }: { co: CompanySnapshot }) {
   );
 }
 
+const PAGE_SIZE = 20;
+
 export default function CompanyTable({ companies }: { companies: CompanySnapshot[] }) {
   const [hovered, setHovered] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
 
   if (companies.length === 0) {
     return (
@@ -62,8 +65,13 @@ export default function CompanyTable({ companies }: { companies: CompanySnapshot
     );
   }
 
+  const pageCount = Math.max(1, Math.ceil(companies.length / PAGE_SIZE));
+  const start = page * PAGE_SIZE;
+  const pageCompanies = companies.slice(start, start + PAGE_SIZE);
+  const endRank = Math.min(start + PAGE_SIZE, companies.length);
+
   return (
-    <div className="overflow-visible">
+    <div className="overflow-visible space-y-4">
       <table className="w-full text-sm font-sans">
         <thead>
           <tr className="border-b border-surface-border">
@@ -75,14 +83,14 @@ export default function CompanyTable({ companies }: { companies: CompanySnapshot
           </tr>
         </thead>
         <tbody>
-          {companies.map((co, i) => (
+          {pageCompanies.map((co, i) => (
             <tr
               key={co.company_id}
               className="border-b border-surface-border/50 hover:bg-surface-raised/30 transition-colors relative"
               onMouseEnter={() => setHovered(co.company_id)}
               onMouseLeave={() => setHovered(null)}
             >
-              <td className="py-3 pr-4 text-white/30 tabular-nums">{i + 1}</td>
+              <td className="py-3 pr-4 text-white/30 tabular-nums">{start + i + 1}</td>
               <td className="py-3 pr-4 relative">
                 <div className="flex items-center gap-2">
                   <Link
@@ -94,7 +102,7 @@ export default function CompanyTable({ companies }: { companies: CompanySnapshot
                       {co.name}
                     </span>
                   </Link>
-                  <CareersLink href={co.careers_url} label={`${co.name} careers page`} />
+                  <CareersLink companyName={co.name} href={co.careers_url} />
                 </div>
                 {hovered === co.company_id && <HoverPreview co={co} />}
               </td>
@@ -116,6 +124,33 @@ export default function CompanyTable({ companies }: { companies: CompanySnapshot
           ))}
         </tbody>
       </table>
+
+      {pageCount > 1 && (
+        <div className="flex items-center justify-between pt-2">
+          <p className="text-white/40 text-xs font-sans">
+            {start + 1}–{endRank} of {companies.length}
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage(p => Math.max(0, p - 1))}
+              disabled={page === 0}
+              className="px-3 py-1.5 rounded-md text-xs font-sans text-white/70 bg-surface-raised border border-surface-border hover:text-canvas hover:border-white/40 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              ← Prev
+            </button>
+            <span className="text-white/40 text-xs font-sans tabular-nums">
+              {page + 1} / {pageCount}
+            </span>
+            <button
+              onClick={() => setPage(p => Math.min(pageCount - 1, p + 1))}
+              disabled={page >= pageCount - 1}
+              className="px-3 py-1.5 rounded-md text-xs font-sans text-white/70 bg-surface-raised border border-surface-border hover:text-canvas hover:border-white/40 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              Next →
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

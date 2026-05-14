@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { domainFor } from '@/lib/logos';
+import { domainFor, LOGO_URL_OVERRIDES } from '@/lib/logos';
 
 interface Props {
   name: string;
@@ -40,9 +40,16 @@ function initials(name: string) {
 export default function CompanyLogo({ name, careersUrl, size = 24, className = '' }: Props) {
   const [failed, setFailed] = useState(false);
 
+  const explicit = LOGO_URL_OVERRIDES[name.toLowerCase().trim()];
   const domain = domainFor(name, careersUrl ?? null);
-  // DuckDuckGo's favicon proxy — reliable, well-cached, no API key.
-  const src = domain ? `https://icons.duckduckgo.com/ip3/${domain}.ico` : null;
+  // Hard override beats favicon proxy. Otherwise Google's favicon service
+  // returns sharp PNGs up to 256px (much higher-res than DDG's 16/32px .ico).
+  const targetPx = Math.max(64, size * 4);
+  const src = explicit
+    ? explicit
+    : domain
+      ? `https://www.google.com/s2/favicons?domain=${domain}&sz=${targetPx}`
+      : null;
 
   if (!src || failed) {
     const { bg, fg } = paletteFor(name);

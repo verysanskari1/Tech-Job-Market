@@ -76,7 +76,8 @@ interface ChipProps {
 
 function Chip({ mover }: ChipProps) {
   const [hovered, setHovered] = useState(false);
-  // delta === 0 means "no movers yet" fallback — show the role count instead.
+  // delta === 0 means either "no change today" OR fallback (single day of data).
+  // Either way, suppress the arrow and show the role count instead.
   const hasDelta = mover.delta !== 0;
   const up = mover.delta > 0;
   const sign = up ? '+' : '';
@@ -89,7 +90,7 @@ function Chip({ mover }: ChipProps) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <span className="text-white/60 font-mono text-xs font-semibold tracking-wider">
+      <span className={`${hasDelta ? (up ? 'text-[#00FF7F]/80' : 'text-[#FF4D4D]/80') : 'text-white/60'} font-mono text-xs font-semibold tracking-wider`}>
         {ticker(mover.name)}
       </span>
       {hasDelta ? (
@@ -103,9 +104,17 @@ function Chip({ mover }: ChipProps) {
       )}
 
       {hovered && (
-        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 whitespace-nowrap rounded-md bg-[#1a1a1a] border border-white/10 px-3 py-1.5 text-xs font-sans text-white shadow-lg pointer-events-none">
+        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 whitespace-nowrap rounded-md bg-[#1a1a1a] border border-white/10 px-3 py-1.5 text-xs font-sans text-white shadow-lg pointer-events-none flex items-center gap-3">
           <span className="font-semibold">{mover.name}</span>
-          <span className="text-white/40 ml-2">{mover.total_open.toLocaleString()} open roles</span>
+          <span className="text-white/50 tabular-nums">{mover.total_open.toLocaleString()} open</span>
+          {hasDelta && (
+            <span className={`${color} font-medium tabular-nums`}>
+              {sign}{mover.delta} today
+            </span>
+          )}
+          {!hasDelta && (
+            <span className="text-white/30">No change today</span>
+          )}
         </span>
       )}
     </span>

@@ -12,22 +12,32 @@ import {
   AreaChart,
 } from 'recharts';
 import CompanyLogo from '@/components/CompanyLogo';
+import PDoomBar from '@/components/PDoomBar';
 import { slugify } from '@/lib/slug';
 import type { IndexSeries } from '@/types';
 
 interface Props {
-  series: IndexSeries[];   // first item is the "Total" series
+  series: IndexSeries[];
 }
 
 const INITIAL_CONSTITUENTS = 12;
 
-const RANGES = [
-  { id: '7d',  days: 7,   label: '7D'  },
-  { id: '30d', days: 30,  label: '30D' },
-  { id: '90d', days: 90,  label: '90D' },
-  { id: '1y',  days: 365, label: '1Y'  },
-] as const;
-type RangeId = (typeof RANGES)[number]['id'];
+// Default index — AI-first. Falls back to the first series if AI 50 isn't present.
+const DEFAULT_INDEX_NAME = 'AI 50';
+
+// Time range filters. Each defines both the chart slice and the delta period.
+// YTD is computed dynamically from Jan 1 of the current year.
+type RangeId = '7d' | '1m' | 'ytd';
+const RANGE_LABELS: Record<RangeId, string> = {
+  '7d':  '7D',
+  '1m':  '1M',
+  'ytd': 'YTD',
+};
+const RANGE_DELTA_LABELS: Record<RangeId, string> = {
+  '7d':  'vs 7d ago',
+  '1m':  'vs 1m ago',
+  'ytd': 'vs YTD start',
+};
 
 function formatNumber(n: number): string {
   return n.toLocaleString('en-US');
@@ -38,9 +48,22 @@ function formatTickDate(iso: string): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+function sliceForRange(points: IndexSeries['points'], range: RangeId) {
+  if (points.length === 0) return points;
+  if (range === '7d')  return points.slice(-7);
+  if (range === '1m')  return points.slice(-30);
+  // YTD: from Jan 1 of the most recent year present in the data
+  const yearStart = `${new Date(points[points.length - 1].date).getFullYear()}-01-01`;
+  return points.filter(p => p.date >= yearStart);
+}
+
 export default function HeroChart({ series }: Props) {
-  const [activeName, setActiveName] = useState(series[0]?.name ?? 'Total');
-  const [rangeId, setRangeId] = useState<RangeId>('90d');
+  // Default to AI 50 — AI-first framing. Falls back to first series.
+  const initialName =
+    series.find(s => s.name === DEFAULT_INDEX_NAME)?.name ?? series[0]?.name ?? 'Total';
+
+  const [activeName, setActiveName] = useState(initialName);
+  const [rangeId, setRangeId] = useState<RangeId>('7d');
   const [showAll, setShowAll] = useState(false);
   const [hoveredChip, setHoveredChip] = useState<string | null>(null);
 
@@ -54,21 +77,14 @@ export default function HeroChart({ series }: Props) {
     setShowAll(false);
   }
 
-  // Slice the series to the active range. Recompute the headline number and
-  // delta-vs-period from the slice so the giant number tracks the toggle.
-  const { points, latest, deltaPct, deltaLabel } = useMemo(() => {
-    if (!active) return { points: [], latest: 0, deltaPct: null, deltaLabel: '' };
-    const range = RANGES.find(r => r.id === rangeId) ?? RANGES[2];
-    const sliced = active.points.slice(-range.days);
+  // Slice + recompute headline number and delta for the active range.
+  const { points, latest, deltaPct } = useMemo(() => {
+    if (!active) return { points: [], latest: 0, deltaPct: null as number | null };
+    const sliced = sliceForRange(active.points, rangeId);
     const head = sliced[0]?.total ?? 0;
     const tail = sliced[sliced.length - 1]?.total ?? active.latest;
     const pct = head > 0 ? ((tail - head) / head) * 100 : null;
-    return {
-      points: sliced,
-      latest: tail,
-      deltaPct: pct,
-      deltaLabel: `vs ${range.label.toLowerCase()} ago`,
-    };
+    return { points: sliced, latest: tail, deltaPct: pct };
   }, [active, rangeId]);
 
   if (!active) {
@@ -90,14 +106,14 @@ export default function HeroChart({ series }: Props) {
   return (
     <div className="space-y-10">
       {/* Centered hero block */}
-      <div className="text-center space-y-4 max-w-3xl mx-auto">
+      <div className="text-center space-y-5 max-w-3xl mx-auto">
         <h1 className="font-serif italic text-canvas text-5xl md:text-6xl lg:text-7xl leading-[1.05]">
           The <span className="text-aurora">Doomberg</span> Terminal
         </h1>
         <p className="text-white/40 text-xs md:text-sm font-sans uppercase tracking-[0.22em]">
           {active.name === 'Total'
             ? `Total open tech roles across ${companyCount} companies`
-            : `${active.display_name} · ${companyCount} ${companyCount === 1 ? 'company' : 'companies'}`}
+            : `Open ${active.display_name} roles across ${companyCount} ${companyCount === 1 ? 'company' : 'companies'}`}
         </p>
         <div className="flex items-baseline justify-center gap-4 flex-wrap">
           <span className="font-serif italic text-canvas text-8xl md:text-9xl leading-none tabular-nums">
@@ -106,39 +122,66 @@ export default function HeroChart({ series }: Props) {
           {deltaPct != null && (
             <span className={`font-sans font-medium text-base md:text-lg ${deltaColor}`}>
               {deltaArrow} {Math.abs(deltaPct).toFixed(2)}%
-              <span className="text-white/40 ml-1.5">{deltaLabel}</span>
+              <span className="text-white/40 ml-1.5">{RANGE_DELTA_LABELS[rangeId]}</span>
             </span>
           )}
         </div>
-        <p
-          className="font-serif italic text-white/70 text-lg md:text-xl inline-flex items-baseline gap-2"
-          title="P(doom) = clamp(0, 1, 0.5 − Δ30d / 30). 0 means hiring is up 15%+ over the last 30 days; 0.5 means flat; 1 means hiring is down 15%+. Always moves with the data."
+        <div
+          className="flex justify-center"
+          title="P(doom) = clamp(0, 1, 0.5 − Δ30d / 30). Hiring up 15% → 0. Flat → 0.5. Hiring down 15% → 1."
         >
-          P<span className="not-italic">(</span>doom<span className="not-italic">)</span>{' '}
-          <span className="not-italic font-sans text-white/40">=</span>{' '}
-          <span className="text-canvas tabular-nums">{active.p_doom.toFixed(2)}</span>
+          <PDoomBar value={active.p_doom} />
+        </div>
+      </div>
+
+      {/* Index chips + description — ABOVE the graph */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap justify-center gap-2">
+          {series.map(s => {
+            const isActive = s.name === active.name;
+            return (
+              <button
+                key={s.name}
+                onClick={() => selectIndex(s.name)}
+                onMouseEnter={() => setHoveredChip(s.name)}
+                onMouseLeave={() => setHoveredChip(null)}
+                title={s.description}
+                className={[
+                  'px-4 py-2 rounded-full text-sm font-sans transition-colors cursor-pointer',
+                  isActive
+                    ? 'bg-aurora text-terminal'
+                    : 'bg-surface border border-surface-border text-white/70 hover:text-canvas hover:border-white/30',
+                ].join(' ')}
+              >
+                <span className="font-medium">{s.display_name}</span>
+                <span className={isActive ? 'text-terminal/60 ml-2' : 'text-white/40 ml-2'}>
+                  {s.companies.length}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-center text-white/50 font-sans text-sm min-h-[1.25rem] transition-opacity duration-150">
+          {focusedIndex.description}
         </p>
       </div>
 
-      {/* The graph */}
+      {/* Chart panel with time-range toggle */}
       <div className="bg-surface border border-surface-border rounded-2xl p-5 md:p-6 space-y-4">
-        {/* Range segmented control */}
         <div className="flex justify-end">
           <div className="inline-flex bg-terminal border border-surface-border rounded-full p-0.5">
-            {RANGES.map(r => {
-              const isActive = r.id === rangeId;
+            {(Object.keys(RANGE_LABELS) as RangeId[]).map(r => {
+              const isActive = r === rangeId;
               return (
                 <button
-                  key={r.id}
-                  onClick={() => setRangeId(r.id)}
+                  key={r}
+                  onClick={() => setRangeId(r)}
                   className={[
                     'px-3 py-1 rounded-full text-xs font-sans font-medium transition-colors cursor-pointer',
-                    isActive
-                      ? 'bg-aurora text-terminal'
-                      : 'text-white/50 hover:text-canvas',
+                    isActive ? 'bg-aurora text-terminal' : 'text-white/50 hover:text-canvas',
                   ].join(' ')}
                 >
-                  {r.label}
+                  {RANGE_LABELS[r]}
                 </button>
               );
             })}
@@ -197,38 +240,6 @@ export default function HeroChart({ series }: Props) {
         </div>
       </div>
 
-      {/* Index toggle chips */}
-      <div className="space-y-3">
-        <div className="flex flex-wrap justify-center gap-2">
-          {series.map(s => {
-            const isActive = s.name === active.name;
-            return (
-              <button
-                key={s.name}
-                onClick={() => selectIndex(s.name)}
-                onMouseEnter={() => setHoveredChip(s.name)}
-                onMouseLeave={() => setHoveredChip(null)}
-                title={s.description}
-                className={[
-                  'px-4 py-2 rounded-full text-sm font-sans transition-colors cursor-pointer',
-                  isActive
-                    ? 'bg-aurora text-terminal'
-                    : 'bg-surface border border-surface-border text-white/70 hover:text-canvas hover:border-white/30',
-                ].join(' ')}
-              >
-                <span className="font-medium">{s.display_name}</span>
-                <span className={isActive ? 'text-terminal/60 ml-2' : 'text-white/40 ml-2'}>
-                  {s.companies.length}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-        <p className="text-center text-white/50 font-sans text-sm min-h-[1.25rem] transition-opacity duration-150">
-          {focusedIndex.description}
-        </p>
-      </div>
-
       {/* Constituents — top N + show all toggle */}
       <div>
         <div className="flex flex-wrap gap-2 justify-center">
@@ -252,9 +263,7 @@ export default function HeroChart({ series }: Props) {
               onClick={() => setShowAll(v => !v)}
               className="font-sans text-sm text-white/60 hover:text-aurora underline decoration-white/20 hover:decoration-aurora underline-offset-4 transition-colors cursor-pointer"
             >
-              {showAll
-                ? 'Show less'
-                : `Show all ${active.companies.length} companies →`}
+              {showAll ? 'Show less' : `Show all ${active.companies.length} companies →`}
             </button>
           </div>
         )}
