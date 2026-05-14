@@ -3,10 +3,16 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import CompanyLogo from '@/components/CompanyLogo';
-import type { RoleCategorySummary } from '@/types';
+import Sparkline from '@/components/Sparkline';
+import type { RoleCategorySummary, TimeSeriesPoint } from '@/types';
 
 interface Props {
   roles: RoleCategorySummary[];
+}
+
+function sevenDayDelta(trend: TimeSeriesPoint[]): number | null {
+  if (trend.length < 2) return null;
+  return trend[trend.length - 1].total - trend[0].total;
 }
 
 function HoverPreview({ role }: { role: RoleCategorySummary }) {
@@ -40,46 +46,52 @@ function HoverPreview({ role }: { role: RoleCategorySummary }) {
 export default function TopRoles({ roles }: Props) {
   const [hovered, setHovered] = useState<string | null>(null);
 
-  if (roles.length === 0) {
-    return null;
-  }
-
-  const max = roles[0].total;
+  if (roles.length === 0) return null;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-      {roles.map(role => (
-        <Link
-          key={role.slug}
-          href={`/role/${role.slug}`}
-          className="group relative bg-surface border border-surface-border hover:border-aurora/60 rounded-xl p-5 transition-colors"
-          onMouseEnter={() => setHovered(role.slug)}
-          onMouseLeave={() => setHovered(null)}
-        >
-          <div className="flex items-baseline justify-between gap-2">
-            <h3 className="font-sans font-medium text-canvas text-base group-hover:text-aurora transition-colors">
-              {role.category}
-            </h3>
-            <span className="font-serif italic text-canvas text-3xl leading-none tabular-nums">
-              {role.total.toLocaleString()}
-            </span>
-          </div>
-          <p className="text-white/40 text-xs font-sans mt-2">
-            across {role.company_count} {role.company_count === 1 ? 'company' : 'companies'}
-          </p>
-          <div
-            className="h-1 bg-surface-raised rounded-full overflow-hidden mt-3"
-            title={`This category is ${((role.total / max) * 100).toFixed(0)}% the size of the biggest hiring category in this view.`}
+      {roles.map(role => {
+        const delta = sevenDayDelta(role.trend);
+        return (
+          <Link
+            key={role.slug}
+            href={`/role/${role.slug}`}
+            className="group relative bg-surface border border-surface-border hover:border-aurora/60 rounded-xl p-5 transition-colors"
+            onMouseEnter={() => setHovered(role.slug)}
+            onMouseLeave={() => setHovered(null)}
           >
-            <div
-              className="h-full bg-aurora rounded-full"
-              style={{ width: `${(role.total / max) * 100}%` }}
-            />
-          </div>
+            <div className="flex items-baseline justify-between gap-2">
+              <h3 className="font-sans font-medium text-canvas text-base group-hover:text-aurora transition-colors">
+                {role.category}
+              </h3>
+              <span className="font-serif italic text-canvas text-3xl leading-none tabular-nums">
+                {role.total.toLocaleString()}
+              </span>
+            </div>
+            <p className="text-white/40 text-xs font-sans mt-2">
+              across {role.company_count} {role.company_count === 1 ? 'company' : 'companies'}
+            </p>
 
-          {hovered === role.slug && <HoverPreview role={role} />}
-        </Link>
-      ))}
+            {/* 7-day sparkline + delta — replaces the static progress bar */}
+            <div className="mt-4 flex items-end justify-between gap-3">
+              <Sparkline data={role.trend} width={140} height={32} />
+              {delta != null && delta !== 0 && (
+                <span
+                  className={`font-sans text-xs tabular-nums ${delta > 0 ? 'text-cursor' : 'text-ember'}`}
+                  title="Change over the last 7 days"
+                >
+                  {delta > 0 ? '▲' : '▼'} {delta > 0 ? '+' : ''}{delta} <span className="text-white/40">in 7d</span>
+                </span>
+              )}
+              {delta === 0 && (
+                <span className="font-sans text-xs text-white/30">flat in 7d</span>
+              )}
+            </div>
+
+            {hovered === role.slug && <HoverPreview role={role} />}
+          </Link>
+        );
+      })}
     </div>
   );
 }

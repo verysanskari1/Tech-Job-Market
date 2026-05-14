@@ -111,7 +111,10 @@ export default function HeroChart({ series }: Props) {
           The <span className="text-aurora">Doomberg</span> Terminal
         </h1>
         <p className="text-white/40 text-xs md:text-sm font-sans uppercase tracking-[0.22em] flex items-center justify-center gap-2 flex-wrap">
-          <span>Open tech roles across {companyCount}</span>
+          <span>Open tech roles across</span>
+          <span className="inline-flex items-center bg-aurora/10 border border-aurora/30 text-aurora rounded-full px-2.5 py-0.5 normal-case tracking-normal text-xs font-medium tabular-nums">
+            {companyCount}
+          </span>
           <span className="inline-flex items-center bg-aurora/10 border border-aurora/30 text-aurora rounded-full px-2.5 py-0.5 normal-case tracking-normal text-xs font-medium">
             {active.noun_phrase}
           </span>

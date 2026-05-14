@@ -6,7 +6,7 @@ import CompanyLogo from '@/components/CompanyLogo';
 import CareersLink from '@/components/CareersLink';
 import Sparkline from '@/components/Sparkline';
 import { slugify } from '@/lib/slug';
-import type { CompanySnapshot } from '@/types';
+import type { CompanySnapshot, TimeSeriesPoint } from '@/types';
 
 function topCategory(byCategory: Record<string, number>): string {
   const entries = Object.entries(byCategory).sort((a, b) => b[1] - a[1]);
@@ -17,6 +17,12 @@ function topCategories(byCategory: Record<string, number>, n = 5) {
   return Object.entries(byCategory)
     .sort((a, b) => b[1] - a[1])
     .slice(0, n);
+}
+
+// Trend is fetched at trendDays=7, so the first point is ~7 days ago.
+function sevenDayDelta(trend: TimeSeriesPoint[]): number | null {
+  if (trend.length < 2) return null;
+  return trend[trend.length - 1].total - trend[0].total;
 }
 
 function HoverPreview({ co }: { co: CompanySnapshot }) {
@@ -106,8 +112,23 @@ export default function CompanyTable({ companies }: { companies: CompanySnapshot
                 </div>
                 {hovered === co.company_id && <HoverPreview co={co} />}
               </td>
-              <td className="py-3 pr-4 text-right text-white/80 tabular-nums">
-                {co.total_open.toLocaleString()}
+              <td className="py-3 pr-4 text-right tabular-nums">
+                <div className="flex flex-col items-end leading-tight">
+                  <span className="text-white/80">{co.total_open.toLocaleString()}</span>
+                  {(() => {
+                    const d = sevenDayDelta(co.trend);
+                    if (d == null) return null;
+                    if (d === 0) return <span className="text-white/30 text-[10px] mt-0.5">no change</span>;
+                    const color = d > 0 ? 'text-cursor' : 'text-ember';
+                    const arrow = d > 0 ? '▲' : '▼';
+                    const sign = d > 0 ? '+' : '';
+                    return (
+                      <span className={`text-[10px] mt-0.5 ${color}`}>
+                        {arrow} {sign}{d}
+                      </span>
+                    );
+                  })()}
+                </div>
               </td>
               <td className="py-3 pr-4 hidden md:table-cell">
                 <Sparkline data={co.trend} width={96} height={28} />
