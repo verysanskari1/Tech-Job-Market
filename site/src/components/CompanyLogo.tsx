@@ -38,9 +38,10 @@ function initials(name: string) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-// Logo.dev publishable token. Lives in env so we don't ship it in the
-// bundle accidentally. Public key — safe to expose, can be rotated.
-const LOGO_DEV_TOKEN = process.env.NEXT_PUBLIC_LOGO_DEV_TOKEN ?? '';
+// Logo.dev publishable token. Public by design — safe to commit. The env
+// var can override it (e.g. when rotating the key without redeploying code).
+const LOGO_DEV_TOKEN =
+  process.env.NEXT_PUBLIC_LOGO_DEV_TOKEN || 'pk_NNwvFnj4TEqB0N1c9E10kA';
 
 // Resolution priority:
 //   1. /logos/{slug}.svg   — drop a hand-curated SVG here for any company
