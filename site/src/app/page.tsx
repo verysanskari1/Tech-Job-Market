@@ -47,7 +47,7 @@ export default async function DashboardPage() {
         <section id="companies" className="space-y-5 scroll-mt-20">
           <div className="space-y-1">
             <h2 className="font-serif italic text-canvas text-3xl md:text-4xl">
-              Top companies
+              Top companies hiring
             </h2>
             <p className="font-sans text-white/50 text-sm md:text-base">
               Every tracked company, ranked by open tech roles right now.
