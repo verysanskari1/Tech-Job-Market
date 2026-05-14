@@ -132,7 +132,7 @@ export default function TickerTape({ movers }: { movers: Mover[] }) {
 
   return (
     <div
-      className="border-b border-surface-border bg-terminal overflow-hidden h-9 flex items-center"
+      className="border-b border-surface-border bg-terminal overflow-x-clip h-9 flex items-center relative"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
