@@ -38,21 +38,28 @@ function initials(name: string) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+// Logo.dev publishable token. Lives in env so we don't ship it in the
+// bundle accidentally. Public key — safe to expose, can be rotated.
+const LOGO_DEV_TOKEN = process.env.NEXT_PUBLIC_LOGO_DEV_TOKEN ?? '';
+
 // Resolution priority:
 //   1. /logos/{slug}.svg   — drop a hand-curated SVG here for any company
 //                            and it wins. 404s fall through silently.
 //   2. LOGO_URL_OVERRIDES  — hardcoded URL per company (e.g. CDN PNG)
-//   3. Google favicon @ 256px
-//   4. Newsreader letter avatar
+//   3. logo.dev            — high-quality brand icons (PNG/SVG), if token set
+//   4. Google favicon @ 256px — free, no key, but often low-res
+//   5. Newsreader letter avatar
 export default function CompanyLogo({ name, careersUrl, size = 24, className = '' }: Props) {
-  const [stage, setStage] = useState<0 | 1 | 2 | 3>(0);
+  const [stage, setStage] = useState(0);
 
   const slug = slugify(name);
   const key = name.toLowerCase().trim();
   const explicit = LOGO_URL_OVERRIDES[key];
   const domain = domainFor(name, careersUrl ?? null);
-  // Google's favicon service. 256 is the practical ceiling — most company
-  // favicons cap out around 64–128 at the source, but ask for max anyway.
+
+  const logoDevUrl = LOGO_DEV_TOKEN && domain
+    ? `https://img.logo.dev/${domain}?token=${LOGO_DEV_TOKEN}&size=256&format=png`
+    : null;
   const faviconUrl = domain
     ? `https://www.google.com/s2/favicons?domain=${domain}&sz=256`
     : null;
@@ -61,6 +68,7 @@ export default function CompanyLogo({ name, careersUrl, size = 24, className = '
   const chain: string[] = [];
   chain.push(`/logos/${slug}.svg`);
   if (explicit) chain.push(explicit);
+  if (logoDevUrl) chain.push(logoDevUrl);
   if (faviconUrl) chain.push(faviconUrl);
 
   if (stage >= chain.length) {
@@ -96,7 +104,7 @@ export default function CompanyLogo({ name, careersUrl, size = 24, className = '
       alt=""
       width={size}
       height={size}
-      onError={() => setStage(s => (s + 1) as 0 | 1 | 2 | 3)}
+      onError={() => setStage(s => s + 1)}
       className={`shrink-0 rounded-md bg-canvas/5 ${className}`}
       style={{ width: size, height: size, objectFit: 'contain' }}
     />
