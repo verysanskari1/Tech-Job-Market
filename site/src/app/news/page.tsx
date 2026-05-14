@@ -15,8 +15,8 @@ export default function NewsPage() {
             News
           </h1>
           <p className="font-sans text-white/50 text-sm md:text-base">
-            Hiring-related news across every tracked company — layoffs, funding,
-            product launches, and other moves.
+            Hiring-related news across every tracked company. Layoffs,
+            funding, product launches, and other moves.
           </p>
         </header>
         <NewsPageClient items={news} />

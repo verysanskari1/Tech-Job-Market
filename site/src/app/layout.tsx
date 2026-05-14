@@ -11,7 +11,7 @@ const newsreader = Newsreader({
 });
 
 export const metadata: Metadata = {
-  title: 'The Doomberg Terminal — Live tech hiring tracker',
+  title: 'The Doomberg Terminal · Live tech hiring tracker',
   description: 'A live ticker of open software roles across the companies actually building things. Tech isn’t doomed until this number is zero.',
 };
 

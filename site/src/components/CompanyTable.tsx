@@ -10,7 +10,7 @@ import type { CompanySnapshot, TimeSeriesPoint } from '@/types';
 
 function topCategory(byCategory: Record<string, number>): string {
   const entries = Object.entries(byCategory).sort((a, b) => b[1] - a[1]);
-  return entries[0]?.[0] ?? '—';
+  return entries[0]?.[0] ?? '–';
 }
 
 function topCategories(byCategory: Record<string, number>, n = 5) {
@@ -34,7 +34,7 @@ function HoverPreview({ co }: { co: CompanySnapshot }) {
         <CompanyLogo name={co.name} careersUrl={co.careers_url} size={28} />
         <div className="flex-1 min-w-0">
           <p className="text-canvas font-sans font-medium text-sm">{co.name}</p>
-          <p className="text-white/40 text-xs font-sans">{co.total_open.toLocaleString()} open roles</p>
+          <p className="text-white/40 text-xs font-sans">{co.total_open.toLocaleString()} open tech roles</p>
         </div>
       </div>
       <div className="space-y-1.5">
@@ -83,7 +83,7 @@ export default function CompanyTable({ companies }: { companies: CompanySnapshot
           <tr className="border-b border-surface-border">
             <th className="text-left text-white/40 font-medium pb-3 pr-4 w-8">#</th>
             <th className="text-left text-white/40 font-medium pb-3 pr-4">Company</th>
-            <th className="text-right text-white/40 font-medium pb-3 pr-4">Open roles</th>
+            <th className="text-right text-white/40 font-medium pb-3 pr-4">Open tech roles</th>
             <th className="text-left text-white/40 font-medium pb-3 pr-4 hidden md:table-cell">7d</th>
             <th className="text-left text-white/40 font-medium pb-3">Top category</th>
           </tr>
