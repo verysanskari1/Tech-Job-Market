@@ -21,18 +21,25 @@ export default function PDoomBar({ value }: Props) {
         P<span className="not-italic">(</span>doom<span className="not-italic">)</span>
       </span>
 
-      <div className="relative w-48 md:w-64 h-1.5 bg-surface-border rounded-full">
-        {/* subtle tick marks */}
-        <span className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-px h-2.5 bg-white/20" />
-        <span className="absolute left-1/2 top-1/2 -translate-y-1/2 -translate-x-1/2 w-px h-2 bg-white/10" />
-        <span className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1 w-px h-2.5 bg-white/20" />
+      <div className="relative w-48 md:w-64">
+        {/* the bar itself */}
+        <div className="relative h-1.5 bg-surface-border rounded-full">
+          <span className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-px h-2.5 bg-white/20" />
+          <span className="absolute left-1/2 top-1/2 -translate-y-1/2 -translate-x-1/2 w-px h-2 bg-white/10" />
+          <span className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1 w-px h-2.5 bg-white/20" />
 
-        {/* the marker */}
-        <span
-          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full border-2 border-terminal shadow"
-          style={{ left: `${pct}%`, background: markerColor }}
-          aria-hidden
-        />
+          <span
+            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full border-2 border-terminal shadow transition-[left,background] duration-500"
+            style={{ left: `${pct}%`, background: markerColor }}
+            aria-hidden
+          />
+        </div>
+
+        {/* endpoint labels — 0 is calm, 1 is doomed */}
+        <div className="absolute inset-x-0 top-full mt-1 flex justify-between text-[10px] font-sans uppercase tracking-[0.18em] text-white/30 pointer-events-none">
+          <span>0</span>
+          <span>1</span>
+        </div>
       </div>
 
       <span className="font-serif italic text-canvas tabular-nums text-base md:text-lg w-12 text-right">

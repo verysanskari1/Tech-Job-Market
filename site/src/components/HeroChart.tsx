@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 import CompanyLogo from '@/components/CompanyLogo';
 import PDoomBar from '@/components/PDoomBar';
+import AnimatedCount from '@/components/AnimatedCount';
 import { slugify } from '@/lib/slug';
 import type { IndexSeries } from '@/types';
 
@@ -112,17 +113,24 @@ export default function HeroChart({ series }: Props) {
         </h1>
         <p className="text-white/40 text-xs md:text-sm font-sans uppercase tracking-[0.22em] flex items-center justify-center gap-2 flex-wrap">
           <span>Open tech roles across</span>
-          <span className="inline-flex items-center bg-aurora/10 border border-aurora/30 text-aurora rounded-full px-2.5 py-0.5 normal-case tracking-normal text-xs font-medium tabular-nums">
+          <span
+            key={`count-${active.name}`}
+            className="hero-anim inline-flex items-center bg-aurora/10 border border-aurora/30 text-aurora rounded-full px-2.5 py-0.5 normal-case tracking-normal text-xs font-medium tabular-nums"
+          >
             {companyCount}
           </span>
-          <span className="inline-flex items-center bg-aurora/10 border border-aurora/30 text-aurora rounded-full px-2.5 py-0.5 normal-case tracking-normal text-xs font-medium">
+          <span
+            key={`noun-${active.name}`}
+            className="hero-anim inline-flex items-center bg-aurora/10 border border-aurora/30 text-aurora rounded-full px-2.5 py-0.5 normal-case tracking-normal text-xs font-medium"
+          >
             {active.noun_phrase}
           </span>
         </p>
         <div className="flex items-baseline justify-center gap-4 flex-wrap">
-          <span className="font-serif italic text-canvas text-8xl md:text-9xl leading-none tabular-nums">
-            {formatNumber(latest)}
-          </span>
+          <AnimatedCount
+            value={latest}
+            className="font-serif italic text-canvas text-8xl md:text-9xl leading-none tabular-nums"
+          />
           {deltaPct != null && (
             <span className={`font-sans font-medium text-base md:text-lg ${deltaColor}`}>
               {deltaArrow} {Math.abs(deltaPct).toFixed(2)}%
@@ -165,7 +173,10 @@ export default function HeroChart({ series }: Props) {
             );
           })}
         </div>
-        <p className="text-center text-white/50 font-sans text-sm min-h-[1.25rem] transition-opacity duration-150">
+        <p
+          key={`desc-${focusedIndex.name}`}
+          className="hero-anim text-center text-white/50 font-sans text-sm min-h-[1.25rem]"
+        >
           {focusedIndex.description}
         </p>
       </div>

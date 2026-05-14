@@ -29,7 +29,7 @@ export default async function CompanyPage({ params }: { params: { slug: string }
   const company = await getCompanyBySlug(params.slug);
   if (!company) notFound();
 
-  const trend = await getCompanyTimeSeries(company.id, 90);
+  const trend = await getCompanyTimeSeries(company.id, 365);
 
   const categories = (Object.entries(company.by_category) as [string, number][])
     .filter(([cat]) => cat !== 'Other')
@@ -122,45 +122,49 @@ export default async function CompanyPage({ params }: { params: { slug: string }
         </section>
 
         {/* Category breakdown — categories link to /role/[slug] */}
-        {categories.length > 0 && (
-          <section className="bg-surface border border-surface-border rounded-2xl p-6 space-y-4">
-            <h2 className="text-canvas font-sans font-semibold text-sm uppercase tracking-wider">
-              Roles by <em className="font-serif italic font-normal text-white/60">category</em>
-            </h2>
-            <div className="space-y-2.5">
-              {categories.map(([cat, count]) => (
-                <Link
-                  key={cat}
-                  href={`/role/${slugify(cat)}`}
-                  className="block space-y-1 group"
-                >
-                  <div className="flex items-baseline justify-between text-sm font-sans">
-                    <span className="text-white/80 group-hover:text-aurora transition-colors">{cat}</span>
-                    <span className="text-white/40 tabular-nums">{count}</span>
-                  </div>
-                  <div className="h-1.5 bg-surface-raised rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-aurora rounded-full"
-                      style={{ width: `${(count / maxCat) * 100}%` }}
-                    />
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
+        {categories.length > 0 && (() => {
+          const categoriesTotal = categories.reduce((s, [, c]) => s + c, 0);
+          return (
+            <section className="bg-surface border border-surface-border rounded-2xl p-6 space-y-4">
+              <h2 className="text-canvas font-sans font-semibold text-sm uppercase tracking-wider">
+                Roles by <em className="font-serif italic font-normal text-white/60">category</em>
+              </h2>
+              <div className="space-y-2.5">
+                {categories.map(([cat, count]) => {
+                  const share = categoriesTotal > 0 ? (count / categoriesTotal) * 100 : 0;
+                  return (
+                    <Link
+                      key={cat}
+                      href={`/role/${slugify(cat)}`}
+                      className="block space-y-1 group"
+                    >
+                      <div className="flex items-baseline justify-between text-sm font-sans">
+                        <span className="text-white/80 group-hover:text-aurora transition-colors">{cat}</span>
+                        <span className="text-white/40 tabular-nums">
+                          {count}
+                          <span className="text-white/30 ml-2">· {share.toFixed(0)}%</span>
+                        </span>
+                      </div>
+                      <div className="h-1.5 bg-surface-raised rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-aurora rounded-full"
+                          style={{ width: `${(count / maxCat) * 100}%` }}
+                        />
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
+          );
+        })()}
 
         {/* Careers CTA */}
         {company.careers_url && (
           <section className="bg-surface border border-surface-border rounded-2xl p-6 flex items-center justify-between gap-4 flex-wrap">
-            <div>
-              <p className="font-sans font-medium text-canvas">
-                See every role on the <em className="font-serif italic text-aurora">{company.name}</em> careers page
-              </p>
-              <p className="font-sans text-white/50 text-sm">
-                Direct link to where they actually post and accept applications.
-              </p>
-            </div>
+            <p className="font-sans font-medium text-canvas">
+              See every role on the <em className="font-serif italic text-aurora">{company.name}</em> careers page
+            </p>
             <a
               href={company.careers_url}
               target="_blank"
