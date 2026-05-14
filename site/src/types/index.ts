@@ -42,12 +42,13 @@ export interface IndexConstituent {
 export interface IndexSeries {
   name: string;          // 'Total' for the all-up series, otherwise index name
   display_name: string;  // Short, human label for chips/UI (e.g. 'AI' instead of 'AI 50')
+  noun_phrase: string;   // Used after "Open tech roles across X ___" in the hero
   description: string;
   companies: IndexConstituent[];
   points: TimeSeriesPoint[];
   latest: number;
   delta_30d_pct: number | null;
-  p_doom: number;        // 0..1 — 1 - latest / max(points within window)
+  p_doom: number;        // 0..1 — see pDoom() in queries.ts
 }
 
 export interface RoleCategorySummary {
