@@ -78,7 +78,7 @@ export default function CompanyTable({ companies }: { companies: CompanySnapshot
             <th className="text-left text-white/40 font-medium pb-3 pr-4 w-8">#</th>
             <th className="text-left text-white/40 font-medium pb-3 pr-4">Company</th>
             <th className="text-right text-white/40 font-medium pb-3 pr-4">Open roles</th>
-            <th className="text-left text-white/40 font-medium pb-3 pr-4 hidden md:table-cell">30d</th>
+            <th className="text-left text-white/40 font-medium pb-3 pr-4 hidden md:table-cell">7d</th>
             <th className="text-left text-white/40 font-medium pb-3">Top category</th>
           </tr>
         </thead>

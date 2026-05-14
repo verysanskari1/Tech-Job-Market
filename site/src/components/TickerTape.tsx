@@ -76,12 +76,11 @@ interface ChipProps {
 
 function Chip({ mover }: ChipProps) {
   const [hovered, setHovered] = useState(false);
-  // delta === 0 means either "no change today" OR fallback (single day of data).
-  // Either way, suppress the arrow and show the role count instead.
-  const hasDelta = mover.delta !== 0;
+  // We only ever receive movers with non-zero delta (filtered server-side).
   const up = mover.delta > 0;
   const sign = up ? '+' : '';
   const color = up ? 'text-[#00FF7F]' : 'text-[#FF4D4D]';
+  const tickerColor = up ? 'text-[#00FF7F]/80' : 'text-[#FF4D4D]/80';
   const arrow = up ? '▲' : '▼';
 
   return (
@@ -90,31 +89,20 @@ function Chip({ mover }: ChipProps) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <span className={`${hasDelta ? (up ? 'text-[#00FF7F]/80' : 'text-[#FF4D4D]/80') : 'text-white/60'} font-mono text-xs font-semibold tracking-wider`}>
+      <span className={`${tickerColor} font-mono text-xs font-semibold tracking-wider`}>
         {ticker(mover.name)}
       </span>
-      {hasDelta ? (
-        <span className={`${color} font-mono text-xs font-semibold`}>
-          {arrow}{sign}{mover.delta}
-        </span>
-      ) : (
-        <span className="text-white/40 font-mono text-xs font-semibold tabular-nums">
-          {mover.total_open.toLocaleString()}
-        </span>
-      )}
+      <span className={`${color} font-mono text-xs font-semibold`}>
+        {arrow}{sign}{mover.delta}
+      </span>
 
       {hovered && (
         <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 whitespace-nowrap rounded-md bg-[#1a1a1a] border border-white/10 px-3 py-1.5 text-xs font-sans text-white shadow-lg pointer-events-none flex items-center gap-3">
           <span className="font-semibold">{mover.name}</span>
-          <span className="text-white/50 tabular-nums">{mover.total_open.toLocaleString()} open</span>
-          {hasDelta && (
-            <span className={`${color} font-medium tabular-nums`}>
-              {sign}{mover.delta} today
-            </span>
-          )}
-          {!hasDelta && (
-            <span className="text-white/30">No change today</span>
-          )}
+          <span className="text-white/50 tabular-nums">{mover.total_open.toLocaleString()} open roles</span>
+          <span className={`${color} font-medium tabular-nums`}>
+            {sign}{mover.delta} in 7d
+          </span>
         </span>
       )}
     </span>

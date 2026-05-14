@@ -118,25 +118,43 @@ export function logoUrl(companyName: string): string {
   return `https://logo.clearbit.com/${domain}`;
 }
 
+// Hosts that belong to ATS providers, not to the company. If careers_url
+// points at one of these (e.g. job-boards.greenhouse.io/anthropic), the
+// favicon at that domain is the ATS's logo, not Anthropic's — fall through
+// to the override map instead.
+const ATS_HOSTS = [
+  'greenhouse.io',
+  'lever.co',
+  'ashbyhq.com',
+  'myworkdayjobs.com',
+  'smartrecruiters.com',
+  'icims.com',
+];
+
+function isAtsHost(host: string): boolean {
+  return ATS_HOSTS.some(ats => host === ats || host.endsWith('.' + ats));
+}
+
 // Resolve a company to a bare hostname. Priority:
-//  1. careers_url, after stripping common "careers./jobs./apply./boards." prefixes
-//  2. our hardcoded override map (DOMAIN_OVERRIDES)
-//  3. heuristic: `${slug}.com`
+//  1. Hardcoded override (DOMAIN_OVERRIDES) — most reliable for known companies
+//  2. careers_url hostname IF it isn't an ATS provider
+//  3. heuristic `${slug}.com`
 // Returns null only if everything fails (shouldn't happen given the slug fallback).
 export function domainFor(name: string, careersUrl: string | null): string | null {
+  const key = name.toLowerCase().trim();
+  if (DOMAIN_OVERRIDES[key]) return DOMAIN_OVERRIDES[key];
+
   if (careersUrl) {
     try {
       const url = new URL(careersUrl);
       let host = url.hostname.toLowerCase();
       host = host.replace(/^(careers|jobs|apply|boards|hire|work|talent|join)\./, '');
       host = host.replace(/^www\./, '');
-      if (host && host.includes('.')) return host;
+      if (host && host.includes('.') && !isAtsHost(host)) return host;
     } catch {
       // fall through
     }
   }
-  const key = name.toLowerCase().trim();
-  if (DOMAIN_OVERRIDES[key]) return DOMAIN_OVERRIDES[key];
-  const guess = `${key.replace(/\s+/g, '')}.com`;
-  return guess;
+
+  return `${key.replace(/\s+/g, '')}.com`;
 }

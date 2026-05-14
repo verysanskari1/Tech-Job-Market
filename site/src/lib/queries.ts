@@ -24,6 +24,16 @@ export const INDEX_DISPLAY_NAMES: Record<string, string> = {
   'India-HQ':       'India',
 };
 
+// Noun phrase used in the hero label after "Open tech roles across X ___".
+// Rendered as a pill — only this part changes per index.
+export const INDEX_NOUN_PHRASES: Record<string, string> = {
+  'Total':          'companies',
+  'AI 50':          'AI-first companies',
+  'Early but Hot':  'hot startups',
+  'Public Tech':    'public companies',
+  'India-HQ':       'India-headquartered companies',
+};
+
 // Punchy one-liners shown under each chip on hover and below the active one.
 // Keys must match the index names in the `indexes` table.
 export const INDEX_DESCRIPTIONS: Record<string, string> = {
@@ -128,77 +138,64 @@ export async function getCategoryBreakdown(): Promise<CategoryCount[]> {
     .sort((a, b) => b.count - a.count);
 }
 
-// Day-over-day movers. Every company that we have today + yesterday data
-// for gets a chip, with its real delta (which may be 0). When only one
-// day of data exists, falls back to top companies with no delta so the
-// ticker is still informative — the Chip suppresses the arrow then.
-export async function getMovers(limit = 60): Promise<Mover[]> {
-  const { data: dates } = await supabase
-    .from('snapshots_daily')
-    .select('captured_at')
-    .order('captured_at', { ascending: false })
-    .limit(2);
-
-  if (dates && dates.length >= 2) {
-    const [today, yesterday] = [dates[0].captured_at as string, dates[1].captured_at as string];
-
-    const [{ data: todayRows }, { data: yesterdayRows }] = await Promise.all([
-      supabase.from('snapshots_daily')
-        .select('company_id, total_open, companies(name)')
-        .eq('captured_at', today)
-        .range(0, 999),
-      supabase.from('snapshots_daily')
-        .select('company_id, total_open')
-        .eq('captured_at', yesterday)
-        .range(0, 999),
-    ]);
-
-    const prevMap = new Map<string, number>();
-    for (const row of yesterdayRows ?? []) {
-      prevMap.set(row.company_id as string, row.total_open as number);
-    }
-
-    const movers: Mover[] = [];
-    for (const row of todayRows ?? []) {
-      const prev = prevMap.get(row.company_id as string) ?? row.total_open as number;
-      const delta = (row.total_open as number) - prev;
-      movers.push({
-        company_id: row.company_id as string,
-        name: (row.companies as unknown as { name: string } | null)?.name ?? '—',
-        total_open: row.total_open as number,
-        delta,
-      });
-    }
-
-    // Sort: any movement first (by abs(delta) desc), then flat companies
-    // by absolute role count so the ticker always reads as "the heaviest hitters".
-    return movers
-      .sort((a, b) => {
-        const aMag = Math.abs(a.delta);
-        const bMag = Math.abs(b.delta);
-        if (aMag !== bMag) return bMag - aMag;
-        return b.total_open - a.total_open;
-      })
-      .slice(0, limit);
-  }
-
-  // Single day of data — fall back to top companies; Chip will skip the arrow.
-  const date = dates?.[0]?.captured_at as string | undefined;
+// 7-day movers. For each company, compares today's open-role count to the
+// snapshot ~7 days ago and returns only those with non-zero movement. If
+// fewer than 2 days of snapshots exist (so no comparison is possible), we
+// return an empty list — the ticker tape will hide itself rather than show
+// a row of flat tickers.
+export async function getMovers(limit = 60, lookbackDays = 7): Promise<Mover[]> {
+  // Pull the entire snapshot window we need in two queries: latest day's
+  // totals (with company names) and the prior window of totals.
+  const date = await getLatestSnapshotDate();
   if (!date) return [];
 
-  const { data: top } = await supabase
-    .from('snapshots_daily')
-    .select('company_id, total_open, companies(name)')
-    .eq('captured_at', date)
-    .order('total_open', { ascending: false })
-    .limit(limit);
+  const lookbackDate = new Date(new Date(date).getTime() - lookbackDays * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
 
-  return (top ?? []).map(row => ({
-    company_id: row.company_id as string,
-    name: (row.companies as unknown as { name: string } | null)?.name ?? '—',
-    total_open: row.total_open as number,
-    delta: 0,
-  }));
+  const [{ data: latestRows }, { data: priorRows }] = await Promise.all([
+    supabase.from('snapshots_daily')
+      .select('company_id, total_open, companies(name)')
+      .eq('captured_at', date)
+      .range(0, 999),
+    // Take the snapshot closest to (but not after) lookbackDate. Most days
+    // have a snapshot; the .gte().order() pattern picks the nearest later one.
+    supabase.from('snapshots_daily')
+      .select('company_id, total_open, captured_at')
+      .gte('captured_at', lookbackDate)
+      .lte('captured_at', date)
+      .order('captured_at', { ascending: true })
+      .range(0, 49999),
+  ]);
+
+  // For each company, find the earliest snapshot in the lookback window.
+  // That's our baseline. If a company has no snapshot in the window, skip it.
+  const baselineByCompany = new Map<string, number>();
+  for (const row of priorRows ?? []) {
+    const id = row.company_id as string;
+    if (!baselineByCompany.has(id)) {
+      baselineByCompany.set(id, row.total_open as number);
+    }
+  }
+
+  const movers: Mover[] = [];
+  for (const row of latestRows ?? []) {
+    const id = row.company_id as string;
+    const baseline = baselineByCompany.get(id);
+    if (baseline === undefined) continue;            // no comparison point
+    const delta = (row.total_open as number) - baseline;
+    if (delta === 0) continue;                       // movers-only
+    movers.push({
+      company_id: id,
+      name: (row.companies as unknown as { name: string } | null)?.name ?? '—',
+      total_open: row.total_open as number,
+      delta,
+    });
+  }
+
+  return movers
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+    .slice(0, limit);
 }
 
 export async function getTopCompanies(limit = 20, trendDays = 30): Promise<CompanySnapshot[]> {
@@ -394,10 +391,11 @@ export async function getAllIndexSeries(days = 365): Promise<IndexSeries[]> {
 
     const description = INDEX_DESCRIPTIONS[name] ?? '';
     const display_name = INDEX_DISPLAY_NAMES[name] ?? name;
+    const noun_phrase = INDEX_NOUN_PHRASES[name] ?? 'companies';
     const p_doom = pDoom(points);
 
     series.push({
-      name, display_name, description, companies, points, latest, delta_30d_pct, p_doom,
+      name, display_name, noun_phrase, description, companies, points, latest, delta_30d_pct, p_doom,
     });
   }
 

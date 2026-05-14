@@ -17,7 +17,7 @@ export default async function DashboardPage() {
     getAllIndexSeries(365),
     getTopCompanies(999, 7),
     getTopRoles(),
-    getMovers(3),
+    getMovers(),
   ]);
 
   return (
@@ -34,10 +34,10 @@ export default async function DashboardPage() {
         <section id="roles" className="space-y-5 scroll-mt-20">
           <div className="space-y-1">
             <h2 className="font-serif italic text-canvas text-3xl md:text-4xl">
-              Most-hired roles
+              Most in demand roles
             </h2>
             <p className="font-sans text-white/50 text-sm md:text-base">
-              The biggest hiring categories across every tracked company. Click any role to see who&apos;s hiring for it.
+              The biggest tech hiring categories across every tracked company.
             </p>
           </div>
           <TopRoles roles={roles.slice(0, 12)} />
@@ -50,7 +50,7 @@ export default async function DashboardPage() {
               Top companies
             </h2>
             <p className="font-sans text-white/50 text-sm md:text-base">
-              Every tracked company, ranked by open software roles right now.
+              Every tracked company, ranked by open tech roles right now.
             </p>
           </div>
           <div className="bg-surface border border-surface-border rounded-2xl p-4 md:p-6">
