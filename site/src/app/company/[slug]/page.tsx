@@ -1,12 +1,10 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import Navbar from '@/components/Navbar';
 import CompanyLogo from '@/components/CompanyLogo';
 import CareersLink from '@/components/CareersLink';
 import CompanyTrend from '@/components/CompanyTrend';
-import NewsRotator from '@/components/NewsRotator';
 import { getCompanyBySlug, getCompanyTimeSeries, INDEX_DISPLAY_NAMES } from '@/lib/queries';
-import { getMockNewsForCompany } from '@/lib/news-mock';
+import { COMPANY_DESCRIPTIONS } from '@/lib/company-descriptions';
 import { slugify } from '@/lib/slug';
 
 export const revalidate = 3600;
@@ -32,7 +30,7 @@ export default async function CompanyPage({ params }: { params: { slug: string }
   if (!company) notFound();
 
   const trend = await getCompanyTimeSeries(company.id, 365);
-  const news = getMockNewsForCompany(company.slug, 8);
+  const description = COMPANY_DESCRIPTIONS[company.name.toLowerCase()] ?? null;
 
   const categories = (Object.entries(company.by_category) as [string, number][])
     .filter(([cat]) => cat !== 'Other')
@@ -50,10 +48,7 @@ export default async function CompanyPage({ params }: { params: { slug: string }
     company.last_funding_stage || company.employee_count != null || company.region;
 
   return (
-    <>
-      <Navbar />
-
-      <main className="max-w-6xl mx-auto px-6 py-10 md:py-14 space-y-12">
+    <main className="max-w-6xl mx-auto px-6 py-10 md:py-14 space-y-12">
 
         <Link href="/" className="inline-flex items-center gap-1 text-white/40 hover:text-canvas text-sm font-sans transition-colors">
           ← Back to the index
@@ -80,13 +75,17 @@ export default async function CompanyPage({ params }: { params: { slug: string }
                 />
               </div>
               {company.indexes.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {company.indexes.map(idx => (
-                    <span key={idx} className="text-[11px] font-sans text-white/50 bg-surface border border-surface-border rounded-full px-2.5 py-0.5">
-                      {INDEX_DISPLAY_NAMES[idx] ?? idx}
+                <p className="text-[12px] font-sans text-white/50 flex flex-wrap items-center gap-1.5">
+                  <span>Featured in</span>
+                  {company.indexes.map((idx, i) => (
+                    <span key={idx} className="inline-flex items-center gap-1.5">
+                      <span className="bg-aurora/10 border border-aurora/30 text-aurora rounded-full px-2 py-0.5 text-[11px] font-medium">
+                        {INDEX_DISPLAY_NAMES[idx] ?? idx}
+                      </span>
+                      {i < company.indexes.length - 1 && <span className="text-white/30">·</span>}
                     </span>
                   ))}
-                </div>
+                </p>
               )}
             </div>
           </div>
@@ -103,6 +102,13 @@ export default async function CompanyPage({ params }: { params: { slug: string }
             )}
           </div>
         </header>
+
+        {/* One-line description */}
+        {description && (
+          <p className="font-sans text-white/70 text-base md:text-lg leading-relaxed max-w-3xl">
+            {description}
+          </p>
+        )}
 
         {/* Stats row — only render fields that exist */}
         {hasStats && (
@@ -162,26 +168,6 @@ export default async function CompanyPage({ params }: { params: { slug: string }
           );
         })()}
 
-        {/* News for this company — same rotator as the homepage */}
-        {news.length > 0 && (
-          <section className="space-y-4">
-            <h2 className="text-canvas font-sans font-semibold text-lg">
-              In the news <em className="font-serif italic font-normal text-white/60">at {company.name}</em>
-            </h2>
-            <NewsRotator
-              items={news}
-              companyStats={{
-                [company.slug]: {
-                  total_open: company.total_open,
-                  delta_7d: trend.length >= 8
-                    ? trend[trend.length - 1].total - trend[trend.length - 8].total
-                    : null,
-                },
-              }}
-            />
-          </section>
-        )}
-
         {/* Careers CTA */}
         {company.careers_url && (
           <section className="bg-surface border border-surface-border rounded-2xl p-6 flex items-center justify-between gap-4 flex-wrap">
@@ -199,7 +185,6 @@ export default async function CompanyPage({ params }: { params: { slug: string }
           </section>
         )}
 
-      </main>
-    </>
+    </main>
   );
 }
