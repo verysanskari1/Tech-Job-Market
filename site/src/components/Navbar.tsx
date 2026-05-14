@@ -14,6 +14,9 @@ export default function Navbar() {
           <a href="/#companies" className="font-sans text-white/60 hover:text-canvas text-sm transition-colors">
             Companies
           </a>
+          <Link href="/news" className="font-sans text-white/60 hover:text-canvas text-sm transition-colors">
+            News
+          </Link>
         </div>
         <span className="text-white/30 text-xs font-sans hidden md:inline">
           Updated daily · {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
