@@ -150,35 +150,27 @@ export default async function CompanyPage({ params }: { params: { slug: string }
           </section>
         )}
 
-        {/* CTA strip */}
-        <section className="bg-surface border border-surface-border rounded-2xl p-6 flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <p className="font-sans font-medium text-canvas">
-              Practice for interviews at <em className="font-serif italic text-aurora">{company.name}</em>
-            </p>
-            <p className="font-sans text-white/50 text-sm">
-              Get a tailored mock interview using real role descriptions.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {company.careers_url && (
-              <a
-                href={company.careers_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 bg-surface-raised border border-surface-border hover:border-white/40 text-canvas font-sans text-sm font-medium px-4 py-2.5 rounded-full transition-colors"
-              >
-                Careers page ↗
-              </a>
-            )}
+        {/* Careers CTA */}
+        {company.careers_url && (
+          <section className="bg-surface border border-surface-border rounded-2xl p-6 flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <p className="font-sans font-medium text-canvas">
+                See every role on the <em className="font-serif italic text-aurora">{company.name}</em> careers page
+              </p>
+              <p className="font-sans text-white/50 text-sm">
+                Direct link to where they actually post and accept applications.
+              </p>
+            </div>
             <a
-              href={`/interview/${company.slug}`}
-              className="inline-flex items-center gap-1.5 bg-aurora text-terminal font-sans text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-cursor transition-colors"
+              href={company.careers_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 bg-aurora text-terminal font-sans text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-cursor transition-colors shrink-0"
             >
-              Take a mock interview →
+              Open careers page ↗
             </a>
-          </div>
-        </section>
+          </section>
+        )}
 
       </main>
     </>

@@ -67,7 +67,10 @@ export default function TopRoles({ roles }: Props) {
           <p className="text-white/40 text-xs font-sans mt-2">
             across {role.company_count} {role.company_count === 1 ? 'company' : 'companies'}
           </p>
-          <div className="h-1 bg-surface-raised rounded-full overflow-hidden mt-3">
+          <div
+            className="h-1 bg-surface-raised rounded-full overflow-hidden mt-3"
+            title={`This category is ${((role.total / max) * 100).toFixed(0)}% the size of the biggest hiring category in this view.`}
+          >
             <div
               className="h-full bg-aurora rounded-full"
               style={{ width: `${(role.total / max) * 100}%` }}

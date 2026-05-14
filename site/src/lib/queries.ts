@@ -28,7 +28,7 @@ export const INDEX_DISPLAY_NAMES: Record<string, string> = {
 export const INDEX_DESCRIPTIONS: Record<string, string> = {
   'Total':          'Every company we track, rolled up into one number.',
   'AI 50':          'The fifty labs and startups pushing AI from papers to products.',
-  'Early but Hot':  'Hyper-growth startups still small enough to feel it.',
+  'Early but Hot':  'Hyper-growth, pre-IPO.',
   'Public Tech':    'Mature, publicly-traded software companies.',
   'India-HQ':       'Companies headquartered in India.',
 };
@@ -127,17 +127,17 @@ export async function getCategoryBreakdown(): Promise<CategoryCount[]> {
     .sort((a, b) => b.count - a.count);
 }
 
-// Daily movers. If <2 days of snapshots exist (or nothing crossed the
-// threshold), falls back to the top N companies by absolute role count so
-// the ticker is always populated — never shows "no movers yet".
-export async function getMovers(minDelta = 3, fallbackTopN = 30): Promise<Mover[]> {
+// Day-over-day movers. Every company that we have today + yesterday data
+// for gets a chip, with its real delta (which may be 0). When only one
+// day of data exists, falls back to top companies with no delta so the
+// ticker is still informative — the Chip suppresses the arrow then.
+export async function getMovers(limit = 60): Promise<Mover[]> {
   const { data: dates } = await supabase
     .from('snapshots_daily')
     .select('captured_at')
     .order('captured_at', { ascending: false })
     .limit(2);
 
-  // Real movers — only computable with two days of data
   if (dates && dates.length >= 2) {
     const [today, yesterday] = [dates[0].captured_at as string, dates[1].captured_at as string];
 
@@ -159,25 +159,29 @@ export async function getMovers(minDelta = 3, fallbackTopN = 30): Promise<Mover[
 
     const movers: Mover[] = [];
     for (const row of todayRows ?? []) {
-      const prev = prevMap.get(row.company_id as string) ?? 0;
+      const prev = prevMap.get(row.company_id as string) ?? row.total_open as number;
       const delta = (row.total_open as number) - prev;
-      if (Math.abs(delta) >= minDelta) {
-        movers.push({
-          company_id: row.company_id as string,
-          name: (row.companies as unknown as { name: string } | null)?.name ?? '—',
-          total_open: row.total_open as number,
-          delta,
-        });
-      }
+      movers.push({
+        company_id: row.company_id as string,
+        name: (row.companies as unknown as { name: string } | null)?.name ?? '—',
+        total_open: row.total_open as number,
+        delta,
+      });
     }
 
-    if (movers.length > 0) {
-      return movers.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
-    }
+    // Sort: any movement first (by abs(delta) desc), then flat companies
+    // by absolute role count so the ticker always reads as "the heaviest hitters".
+    return movers
+      .sort((a, b) => {
+        const aMag = Math.abs(a.delta);
+        const bMag = Math.abs(b.delta);
+        if (aMag !== bMag) return bMag - aMag;
+        return b.total_open - a.total_open;
+      })
+      .slice(0, limit);
   }
 
-  // Fallback — surface top companies with delta=0 so the ticker keeps
-  // running. The Chip renders no arrow when delta === 0.
+  // Single day of data — fall back to top companies; Chip will skip the arrow.
   const date = dates?.[0]?.captured_at as string | undefined;
   if (!date) return [];
 
@@ -186,7 +190,7 @@ export async function getMovers(minDelta = 3, fallbackTopN = 30): Promise<Mover[
     .select('company_id, total_open, companies(name)')
     .eq('captured_at', date)
     .order('total_open', { ascending: false })
-    .limit(fallbackTopN);
+    .limit(limit);
 
   return (top ?? []).map(row => ({
     company_id: row.company_id as string,
