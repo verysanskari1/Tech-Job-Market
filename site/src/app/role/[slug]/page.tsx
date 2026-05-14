@@ -67,7 +67,7 @@ export default async function RolePage({ params }: { params: { slug: string } })
                     </div>
                   </div>
                 </Link>
-                <CareersLink href={c.careers_url} label={`${c.name} careers page`} />
+                <CareersLink companyName={c.name} href={c.careers_url} />
                 <span className="font-sans text-white/70 text-sm tabular-nums shrink-0">
                   {c.count} {c.count === 1 ? 'role' : 'roles'}
                 </span>

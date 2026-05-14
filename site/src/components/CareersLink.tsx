@@ -1,26 +1,36 @@
 import type { ReactNode } from 'react';
+import { domainFor } from '@/lib/logos';
 
 interface Props {
-  href: string | null;
+  companyName: string;
+  href: string | null;       // careers_url from DB; falls back to derived domain
   label?: string;
   className?: string;
 }
 
-// Subtle ↗ pill linking to a company's careers page. Renders nothing when
-// no URL is available — gracefully skipped in lists.
-export default function CareersLink({ href, label, className = '' }: Props): ReactNode {
-  if (!href) return null;
+// Subtle ↗ pill linking to a company's careers (or main) page. When the
+// careers_url column is empty we fall back to the company's marketing
+// domain so the link is always present — most users just want "more
+// info" anyway, and the marketing site usually has a careers section.
+export default function CareersLink({ companyName, href, label, className = '' }: Props): ReactNode {
+  let url = href;
+  if (!url) {
+    const domain = domainFor(companyName, null);
+    if (domain) url = `https://${domain}`;
+  }
+  if (!url) return null;
+
   return (
     <a
-      href={href}
+      href={url}
       target="_blank"
       rel="noopener noreferrer"
       onClick={e => e.stopPropagation()}
-      title={label ?? 'Open careers page'}
-      aria-label={label ?? 'Open careers page'}
-      className={`inline-flex items-center text-white/30 hover:text-aurora transition-colors ${className}`}
+      title={label ?? `Open ${companyName} careers`}
+      aria-label={label ?? `Open ${companyName} careers`}
+      className={`inline-flex items-center text-white/50 hover:text-aurora transition-colors ${className}`}
     >
-      <span className="text-xs leading-none" aria-hidden>↗</span>
+      <span className="text-sm leading-none" aria-hidden>↗</span>
     </a>
   );
 }

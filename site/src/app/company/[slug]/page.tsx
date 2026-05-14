@@ -3,7 +3,7 @@ import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import CompanyLogo from '@/components/CompanyLogo';
 import CareersLink from '@/components/CareersLink';
-import MiniTrendChart from '@/components/MiniTrendChart';
+import CompanyTrend from '@/components/CompanyTrend';
 import { getCompanyBySlug, getCompanyTimeSeries } from '@/lib/queries';
 import { slugify } from '@/lib/slug';
 
@@ -71,8 +71,8 @@ export default async function CompanyPage({ params }: { params: { slug: string }
                   {company.name}
                 </h1>
                 <CareersLink
+                  companyName={company.name}
                   href={company.careers_url}
-                  label={`${company.name} careers page`}
                   className="text-base"
                 />
               </div>
@@ -111,13 +111,13 @@ export default async function CompanyPage({ params }: { params: { slug: string }
           </section>
         )}
 
-        {/* 90-day hiring trend */}
+        {/* Hiring trend with range toggle */}
         <section className="space-y-4">
           <h2 className="text-canvas font-sans font-semibold text-lg">
-            Hiring trend <em className="font-serif italic font-normal text-white/60">last 90 days</em>
+            Hiring trend
           </h2>
           <div className="bg-surface border border-surface-border rounded-2xl p-5 md:p-6">
-            <MiniTrendChart data={trend} height={240} />
+            <CompanyTrend data={trend} />
           </div>
         </section>
 

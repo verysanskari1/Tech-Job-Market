@@ -15,7 +15,7 @@ export const revalidate = 3600; // ISR — revalidate every hour
 export default async function DashboardPage() {
   const [series, companies, roles, movers] = await Promise.all([
     getAllIndexSeries(365),
-    getTopCompanies(40, 30),
+    getTopCompanies(999, 7),
     getTopRoles(),
     getMovers(3),
   ]);
@@ -34,10 +34,10 @@ export default async function DashboardPage() {
         <section id="roles" className="space-y-5 scroll-mt-20">
           <div className="space-y-1">
             <h2 className="font-serif italic text-canvas text-3xl md:text-4xl">
-              Top roles hiring
+              Most-hired roles
             </h2>
             <p className="font-sans text-white/50 text-sm md:text-base">
-              Click any role to see every company hiring for it.
+              The biggest hiring categories across every tracked company. Click any role to see who&apos;s hiring for it.
             </p>
           </div>
           <TopRoles roles={roles.slice(0, 12)} />
@@ -50,7 +50,7 @@ export default async function DashboardPage() {
               Top companies
             </h2>
             <p className="font-sans text-white/50 text-sm md:text-base">
-              The 40 companies with the most open software roles right now.
+              Every tracked company, ranked by open software roles right now.
             </p>
           </div>
           <div className="bg-surface border border-surface-border rounded-2xl p-4 md:p-6">

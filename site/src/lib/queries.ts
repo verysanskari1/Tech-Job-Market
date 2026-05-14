@@ -17,7 +17,7 @@ import type {
 // are display-only overrides for chips & headers.
 export const INDEX_DISPLAY_NAMES: Record<string, string> = {
   'Total':          'All tech',
-  'AI 50':          'AI',
+  'AI 50':          'AI-first',
   'Early but Hot':  'Hot startups',
   'Public Tech':    'Public',
   'India-HQ':       'India',
