@@ -140,7 +140,7 @@ export default function TickerTape({ movers }: { movers: Mover[] }) {
         ref={trackRef}
         className="flex items-center whitespace-nowrap"
         style={{
-          animation: 'ticker-scroll 120s linear infinite',
+          animation: 'ticker-scroll 150s linear infinite',
           animationPlayState: paused ? 'paused' : 'running',
         }}
       >

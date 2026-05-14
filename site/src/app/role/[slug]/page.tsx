@@ -1,6 +1,5 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import Navbar from '@/components/Navbar';
 import CompanyLogo from '@/components/CompanyLogo';
 import CareersLink from '@/components/CareersLink';
 import CompanyTrend from '@/components/CompanyTrend';
@@ -17,10 +16,7 @@ export default async function RolePage({ params }: { params: { slug: string } })
   const max = role.companies[0]?.count ?? 1;
 
   return (
-    <>
-      <Navbar />
-
-      <main className="max-w-5xl mx-auto px-6 py-10 md:py-14 space-y-12">
+    <main className="max-w-5xl mx-auto px-6 py-10 md:py-14 space-y-12">
 
         <Link href="/" className="inline-flex items-center gap-1 text-white/40 hover:text-canvas text-sm font-sans transition-colors">
           ← Back to the index
@@ -88,7 +84,6 @@ export default async function RolePage({ params }: { params: { slug: string } })
           </div>
         </section>
 
-      </main>
-    </>
+    </main>
   );
 }
