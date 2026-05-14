@@ -483,27 +483,44 @@ export async function getCompanyTimeSeries(companyId: string, days = 90): Promis
 // Role categories — homepage "Top Roles" section + /role/[slug] page
 // ----------------------------------------------------------------------------
 
-// Aggregate the latest day's by_category jsonb across all companies. Returns
-// every category with its total and a preview of the top 5 companies hiring.
-export async function getTopRoles(): Promise<RoleCategorySummary[]> {
+// Aggregate by_category across all companies. Returns every category with
+// its current total, a preview of the top 5 companies hiring, and a 7-day
+// trend (daily sum across companies) for the role's sparkline.
+export async function getTopRoles(trendDays = 7): Promise<RoleCategorySummary[]> {
   const date = await getLatestSnapshotDate();
   if (!date) return [];
 
-  const { data, error } = await supabase
-    .from('snapshots_daily')
-    .select('by_category, companies(name, careers_url, ats, ats_handle)')
-    .eq('captured_at', date)
-    .range(0, 999);
-  if (error) throw error;
+  // Pull two windows in parallel: today's snapshot (with company join for the
+  // top-companies preview) and the trend window (no join needed — much
+  // smaller payload).
+  const since = new Date(new Date(date).getTime() - trendDays * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
 
-  // category -> total, and category -> per-company breakdown
+  const [{ data: today, error: todayErr }, { data: window, error: windowErr }] = await Promise.all([
+    supabase
+      .from('snapshots_daily')
+      .select('by_category, companies(name, careers_url, ats, ats_handle)')
+      .eq('captured_at', date)
+      .range(0, 999),
+    supabase
+      .from('snapshots_daily')
+      .select('captured_at, by_category')
+      .gte('captured_at', since)
+      .lte('captured_at', date)
+      .range(0, 49999),
+  ]);
+  if (todayErr) throw todayErr;
+  if (windowErr) throw windowErr;
+
+  // ── Latest day: totals + top companies per category ──
   const totals = new Map<string, number>();
   const perCompany = new Map<
     string,
     { name: string; careers_url: string | null; count: number }[]
   >();
 
-  for (const row of data ?? []) {
+  for (const row of today ?? []) {
     const company = row.companies as unknown as {
       name: string;
       careers_url: string | null;
@@ -519,7 +536,7 @@ export async function getTopRoles(): Promise<RoleCategorySummary[]> {
     });
     const byCat = (row.by_category as Record<string, number>) ?? {};
     for (const [cat, count] of Object.entries(byCat)) {
-      if (cat === 'Other') continue;          // taxonomy bucket — skip
+      if (cat === 'Other') continue;
       if (!count) continue;
       totals.set(cat, (totals.get(cat) ?? 0) + count);
       const list = perCompany.get(cat) ?? [];
@@ -528,15 +545,35 @@ export async function getTopRoles(): Promise<RoleCategorySummary[]> {
     }
   }
 
+  // ── Trend window: daily total per category, summed across companies ──
+  // category -> (date -> total)
+  const trendBy = new Map<string, Map<string, number>>();
+  for (const row of window ?? []) {
+    const d = row.captured_at as string;
+    const byCat = (row.by_category as Record<string, number>) ?? {};
+    for (const [cat, count] of Object.entries(byCat)) {
+      if (cat === 'Other') continue;
+      if (!count) continue;
+      const dates = trendBy.get(cat) ?? new Map<string, number>();
+      dates.set(d, (dates.get(d) ?? 0) + count);
+      trendBy.set(cat, dates);
+    }
+  }
+
   return Array.from(totals.entries())
     .map(([category, total]) => {
       const companies = (perCompany.get(category) ?? []).sort((a, b) => b.count - a.count);
+      const trendDates = trendBy.get(category) ?? new Map<string, number>();
+      const trend: TimeSeriesPoint[] = Array.from(trendDates.entries())
+        .map(([d, t]) => ({ date: d, total: t }))
+        .sort((a, b) => a.date.localeCompare(b.date));
       return {
         category,
         slug: slugify(category),
         total,
         company_count: companies.length,
         top_companies: companies.slice(0, 5),
+        trend,
       } satisfies RoleCategorySummary;
     })
     .sort((a, b) => b.total - a.total);
