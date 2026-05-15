@@ -61,32 +61,54 @@ export default function NewsPopup({ items, companyStats }: Props) {
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="fixed bottom-6 right-6 z-40 max-w-[360px] bg-surface border border-aurora/40 rounded-xl shadow-2xl p-4 text-left hover:border-aurora cursor-pointer transition-colors group"
+          className="fixed bottom-6 right-6 z-40 w-[340px] bg-surface border border-aurora/40 rounded-xl shadow-2xl text-left hover:border-aurora cursor-pointer transition-colors group overflow-hidden"
           title="Open news feed"
         >
-          <div className="flex items-center justify-between gap-3 mb-2">
-            <div className="flex items-center gap-2">
-              <span className="relative inline-flex">
-                <span className="w-2 h-2 rounded-full bg-aurora" />
-                <span className="absolute inset-0 w-2 h-2 rounded-full bg-aurora animate-ping opacity-70" />
-              </span>
-              <span className="text-[10px] font-sans uppercase tracking-[0.2em] text-aurora font-medium">
-                News · {items.length}
-              </span>
-            </div>
-            <span className="text-white/30 group-hover:text-aurora text-xs">↗</span>
-          </div>
-          <p
-            key={preview.id}
-            className="hero-anim font-sans text-sm text-white/90 leading-snug line-clamp-2"
-          >
-            {preview.title}
-          </p>
-          {preview.company_name && (
-            <p className="font-sans text-[11px] text-white/40 mt-1.5">
-              {preview.company_name} · {formatDate(preview.published_at)}
+          <div key={preview.id} className="hero-anim p-4 space-y-2">
+            <p className="font-sans text-sm text-white/90 leading-snug line-clamp-2">
+              {preview.title}
             </p>
-          )}
+
+            {preview.company_name && (() => {
+              const stat = preview.company_slug ? companyStats?.[preview.company_slug] : undefined;
+              return (
+                <div className="flex items-center gap-2 flex-wrap text-[11px] font-sans text-white/50">
+                  <span className="font-medium text-white/80">{preview.company_name}</span>
+                  {stat && (
+                    <>
+                      <span className="text-white/20">·</span>
+                      <span className="tabular-nums">{stat.total_open.toLocaleString()} open tech roles</span>
+                      {stat.delta_7d != null && stat.delta_7d !== 0 && (
+                        <span
+                          className={`tabular-nums ${stat.delta_7d > 0 ? 'text-cursor' : 'text-ember'}`}
+                        >
+                          {stat.delta_7d > 0 ? '▲' : '▼'} {stat.delta_7d > 0 ? '+' : ''}{stat.delta_7d} in 7d
+                        </span>
+                      )}
+                    </>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Progress bar so users see this thing is rotating */}
+          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-surface-border">
+            <div
+              key={`prog-${preview.id}`}
+              className="h-full bg-aurora origin-left"
+              style={{
+                animation: `news-popup-progress ${ROTATE_MS}ms linear forwards`,
+              }}
+            />
+          </div>
+
+          <style>{`
+            @keyframes news-popup-progress {
+              from { transform: scaleX(0); }
+              to   { transform: scaleX(1); }
+            }
+          `}</style>
         </button>
       )}
 
@@ -157,7 +179,7 @@ export default function NewsPopup({ items, companyStats }: Props) {
                             <>
                               <span className="text-white/20 text-xs">·</span>
                               <span className="font-sans text-xs text-white/40 tabular-nums">
-                                {stat.total_open.toLocaleString()} open
+                                {stat.total_open.toLocaleString()} open tech roles
                               </span>
                               {stat.delta_7d != null && stat.delta_7d !== 0 && (
                                 <span

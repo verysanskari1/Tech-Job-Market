@@ -6,15 +6,19 @@ import { useRouter } from 'next/navigation';
 import { slugify } from '@/lib/slug';
 
 interface Props {
-  companies: string[];   // names
-  roles: string[];       // category names
+  // Pass items by kind so each instance scopes to one section.
+  // Omit either to disable that hit type entirely.
+  companies?: string[];
+  roles?: string[];
+  placeholder?: string;
+  size?: 'sm' | 'md';
 }
 
 type Hit =
   | { kind: 'company'; name: string; slug: string }
   | { kind: 'role';    name: string; slug: string };
 
-export default function SiteSearch({ companies, roles }: Props) {
+export default function SiteSearch({ companies = [], roles = [], placeholder, size = 'md' }: Props) {
   const router = useRouter();
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
@@ -36,13 +40,9 @@ export default function SiteSearch({ companies, roles }: Props) {
       .slice(0, 8);
   }, [q, allHits]);
 
-  // Cmd/Ctrl+K to focus the input
   useEffect(() => {
+    if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        inputRef.current?.focus();
-      }
       if (e.key === 'Escape') {
         inputRef.current?.blur();
         setOpen(false);
@@ -50,9 +50,8 @@ export default function SiteSearch({ companies, roles }: Props) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [open]);
 
-  // Close on click outside
   useEffect(() => {
     if (!open) return;
     const onClick = (e: MouseEvent) => {
@@ -85,6 +84,11 @@ export default function SiteSearch({ companies, roles }: Props) {
     }
   }
 
+  const isCompact = size === 'sm';
+  const inputClasses = isCompact
+    ? 'w-full bg-surface border border-surface-border focus:border-aurora/60 rounded-full pl-9 pr-3 py-2 text-sm font-sans text-canvas placeholder:text-white/30 transition-colors outline-none'
+    : 'w-full bg-surface border border-surface-border focus:border-aurora/60 rounded-full pl-11 pr-16 py-3 text-base font-sans text-canvas placeholder:text-white/30 transition-colors outline-none';
+
   return (
     <div ref={rootRef} className="relative">
       <div className="relative">
@@ -94,15 +98,17 @@ export default function SiteSearch({ companies, roles }: Props) {
           onChange={e => { setQ(e.target.value); setActive(0); setOpen(true); }}
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}
-          placeholder="Search a company or role…"
-          className="w-full bg-surface border border-surface-border focus:border-aurora/60 rounded-full pl-11 pr-16 py-3 text-base font-sans text-canvas placeholder:text-white/30 transition-colors outline-none"
+          placeholder={placeholder ?? 'Search…'}
+          className={inputClasses}
           spellCheck={false}
           autoComplete="off"
         />
-        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" aria-hidden>⌕</span>
-        <kbd className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-sans text-white/40 border border-surface-border rounded px-1.5 py-0.5">
-          ⌘K
-        </kbd>
+        <span
+          className={`absolute ${isCompact ? 'left-3 text-sm' : 'left-4'} top-1/2 -translate-y-1/2 text-white/40`}
+          aria-hidden
+        >
+          ⌕
+        </span>
       </div>
 
       {open && hits.length > 0 && (

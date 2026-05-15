@@ -58,11 +58,15 @@ export default function CompanyLogo({ name, careersUrl, size = 24, className = '
   const explicit = LOGO_URL_OVERRIDES[key];
   const domain = domainFor(name, careersUrl ?? null);
 
+  // Request the smallest size that looks crisp on a retina display (2x).
+  // 128 is plenty for chips/rows; we save a lot of bytes vs 256 across
+  // 40+ logos on the page.
+  const reqPx = size <= 32 ? 128 : size <= 64 ? 192 : 256;
   const logoDevUrl = LOGO_DEV_TOKEN && domain
-    ? `https://img.logo.dev/${domain}?token=${LOGO_DEV_TOKEN}&size=256&format=png`
+    ? `https://img.logo.dev/${domain}?token=${LOGO_DEV_TOKEN}&size=${reqPx}&format=png`
     : null;
   const faviconUrl = domain
-    ? `https://www.google.com/s2/favicons?domain=${domain}&sz=256`
+    ? `https://www.google.com/s2/favicons?domain=${domain}&sz=${reqPx}`
     : null;
 
   // Build the resolution chain so onError can advance to the next URL.
@@ -97,17 +101,30 @@ export default function CompanyLogo({ name, careersUrl, size = 24, className = '
 
   // Plain <img> intentional — bypasses next/image's domain restriction and
   // lets us advance through the fallback chain on any network failure.
-  // eslint-disable-next-line @next/next/no-img-element
+  // The wrapper is a white tile so logos with dark/transparent marks
+  // (Anthropic, OpenAI, Roblox, Palantir, etc.) stay visible on the dark
+  // page background.
   return (
-    <img
-      key={src}
-      src={src}
-      alt=""
-      width={size}
-      height={size}
-      onError={() => setStage(s => s + 1)}
-      className={`shrink-0 rounded-md bg-canvas/5 ${className}`}
-      style={{ width: size, height: size, objectFit: 'contain' }}
-    />
+    <span
+      className={`inline-flex items-center justify-center shrink-0 rounded-md bg-canvas ${className}`}
+      style={{ width: size, height: size }}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        key={src}
+        src={src}
+        alt=""
+        width={size}
+        height={size}
+        loading="lazy"
+        decoding="async"
+        onError={() => setStage(s => s + 1)}
+        style={{
+          width: Math.round(size * 0.86),
+          height: Math.round(size * 0.86),
+          objectFit: 'contain',
+        }}
+      />
+    </span>
   );
 }
