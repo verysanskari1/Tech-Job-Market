@@ -8,6 +8,7 @@ import type { RoleCategorySummary, TimeSeriesPoint } from '@/types';
 
 interface Props {
   roles: RoleCategorySummary[];
+  showSearch?: boolean;
 }
 
 function sevenDayDelta(trend: TimeSeriesPoint[]): number | null {
@@ -43,14 +44,43 @@ function HoverPreview({ role }: { role: RoleCategorySummary }) {
   );
 }
 
-export default function TopRoles({ roles }: Props) {
+export default function TopRoles({ roles, showSearch = false }: Props) {
   const [hovered, setHovered] = useState<string | null>(null);
+  const [q, setQ] = useState('');
 
   if (roles.length === 0) return null;
 
+  const query = q.trim().toLowerCase();
+  const filtered = query
+    ? roles.filter(r => r.category.toLowerCase().startsWith(query))
+    : roles;
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-      {roles.map(role => {
+    <div className="space-y-4">
+      {showSearch && (
+        <div className="max-w-sm">
+          <div className="relative">
+            <input
+              value={q}
+              onChange={e => setQ(e.target.value)}
+              placeholder="Search a role…"
+              className="w-full bg-surface border border-surface-border focus:border-aurora/60 rounded-full pl-9 pr-3 py-2 text-sm font-sans text-canvas placeholder:text-white/30 transition-colors outline-none"
+              spellCheck={false}
+              autoComplete="off"
+            />
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-sm" aria-hidden>⌕</span>
+          </div>
+        </div>
+      )}
+
+      {filtered.length === 0 && (
+        <p className="font-sans text-white/40 text-sm py-6">
+          No roles start with &ldquo;{query}&rdquo;.
+        </p>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        {filtered.map(role => {
         const delta = sevenDayDelta(role.trend);
         return (
           <Link
@@ -91,7 +121,8 @@ export default function TopRoles({ roles }: Props) {
             {hovered === role.slug && <HoverPreview role={role} />}
           </Link>
         );
-      })}
+        })}
+      </div>
     </div>
   );
 }

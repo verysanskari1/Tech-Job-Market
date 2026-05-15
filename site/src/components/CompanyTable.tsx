@@ -59,9 +59,15 @@ function HoverPreview({ co }: { co: CompanySnapshot }) {
 
 const PAGE_SIZE = 20;
 
-export default function CompanyTable({ companies }: { companies: CompanySnapshot[] }) {
+interface CompanyTableProps {
+  companies: CompanySnapshot[];
+  showSearch?: boolean;
+}
+
+export default function CompanyTable({ companies, showSearch = false }: CompanyTableProps) {
   const [hovered, setHovered] = useState<string | null>(null);
   const [page, setPage] = useState(0);
+  const [q, setQ] = useState('');
 
   if (companies.length === 0) {
     return (
@@ -71,13 +77,46 @@ export default function CompanyTable({ companies }: { companies: CompanySnapshot
     );
   }
 
-  const pageCount = Math.max(1, Math.ceil(companies.length / PAGE_SIZE));
-  const start = page * PAGE_SIZE;
-  const pageCompanies = companies.slice(start, start + PAGE_SIZE);
-  const endRank = Math.min(start + PAGE_SIZE, companies.length);
+  const query = q.trim().toLowerCase();
+  const filtered = query
+    ? companies.filter(c => c.name.toLowerCase().startsWith(query))
+    : companies;
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const start = safePage * PAGE_SIZE;
+  const pageCompanies = filtered.slice(start, start + PAGE_SIZE);
+  const endRank = Math.min(start + PAGE_SIZE, filtered.length);
+
+  function updateQuery(v: string) {
+    setQ(v);
+    setPage(0);
+  }
 
   return (
     <div className="overflow-visible space-y-4">
+      {showSearch && (
+        <div className="max-w-sm">
+          <div className="relative">
+            <input
+              value={q}
+              onChange={e => updateQuery(e.target.value)}
+              placeholder="Search a company…"
+              className="w-full bg-surface-raised border border-surface-border focus:border-aurora/60 rounded-full pl-9 pr-3 py-2 text-sm font-sans text-canvas placeholder:text-white/30 transition-colors outline-none"
+              spellCheck={false}
+              autoComplete="off"
+            />
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-sm" aria-hidden>⌕</span>
+          </div>
+        </div>
+      )}
+
+      {filtered.length === 0 && (
+        <p className="font-sans text-white/40 text-sm py-6">
+          No companies start with &ldquo;{query}&rdquo;.
+        </p>
+      )}
+      {filtered.length > 0 && (
       <table className="w-full text-sm font-sans">
         <thead>
           <tr className="border-b border-surface-border">
@@ -145,8 +184,9 @@ export default function CompanyTable({ companies }: { companies: CompanySnapshot
           ))}
         </tbody>
       </table>
+      )}
 
-      {pageCount > 1 && (
+      {pageCount > 1 && filtered.length > 0 && (
         <div className="flex items-center justify-between pt-2">
           <p className="text-white/40 text-xs font-sans">
             {start + 1}–{endRank} of {companies.length}

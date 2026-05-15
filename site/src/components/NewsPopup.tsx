@@ -61,7 +61,7 @@ export default function NewsPopup({ items, companyStats }: Props) {
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="fixed bottom-6 right-6 z-40 w-[340px] bg-surface border border-aurora/40 rounded-xl shadow-2xl text-left hover:border-aurora cursor-pointer transition-colors group overflow-hidden"
+          className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-40 w-[calc(100vw-2rem)] sm:w-[340px] bg-surface border border-aurora/40 rounded-xl shadow-2xl text-left hover:border-aurora cursor-pointer transition-colors group overflow-hidden"
           title="Open news feed"
         >
           <div key={preview.id} className="hero-anim p-4 space-y-2">

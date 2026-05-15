@@ -129,7 +129,7 @@ export default function HeroChart({ series }: Props) {
         <div className="flex items-baseline justify-center gap-4 flex-wrap">
           <AnimatedCount
             value={latest}
-            className="font-serif italic text-canvas text-8xl md:text-9xl leading-none tabular-nums"
+            className="font-serif italic text-canvas text-7xl md:text-8xl lg:text-9xl leading-none tabular-nums"
           />
           {deltaPct != null && (
             <span className={`font-sans font-medium text-base md:text-lg ${deltaColor}`}>
