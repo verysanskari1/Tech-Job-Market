@@ -660,3 +660,62 @@ export async function getRoleBySlug(slug: string): Promise<RoleCategoryDetail | 
     companies,
   };
 }
+
+// ----------------------------------------------------------------------------
+// Company news — populated by the news-scraper Apify actor
+// ----------------------------------------------------------------------------
+
+export async function getNewsFromDB(limit = 60): Promise<import('@/types').NewsItem[]> {
+  const { data, error } = await supabase
+    .from('company_news')
+    .select('id, company_id, source, category, title, url, published_at, companies(name)')
+    .order('published_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    // RLS or missing-table errors are non-fatal — the layout falls back to mocks.
+    return [];
+  }
+
+  return (data ?? []).map(row => {
+    const company = row.companies as unknown as { name: string } | null;
+    return {
+      id: row.id as string,
+      company_slug: company ? slugify(company.name) : null,
+      company_name: company?.name ?? null,
+      title: row.title as string,
+      url: row.url as string,
+      source: row.source as string,
+      category: row.category as import('@/types').NewsCategory,
+      published_at: row.published_at as string,
+    };
+  });
+}
+
+export async function getNewsForCompanyFromDB(
+  companyId: string,
+  limit = 10,
+): Promise<import('@/types').NewsItem[]> {
+  const { data, error } = await supabase
+    .from('company_news')
+    .select('id, company_id, source, category, title, url, published_at, companies(name)')
+    .eq('company_id', companyId)
+    .order('published_at', { ascending: false })
+    .limit(limit);
+
+  if (error) return [];
+
+  return (data ?? []).map(row => {
+    const company = row.companies as unknown as { name: string } | null;
+    return {
+      id: row.id as string,
+      company_slug: company ? slugify(company.name) : null,
+      company_name: company?.name ?? null,
+      title: row.title as string,
+      url: row.url as string,
+      source: row.source as string,
+      category: row.category as import('@/types').NewsCategory,
+      published_at: row.published_at as string,
+    };
+  });
+}
