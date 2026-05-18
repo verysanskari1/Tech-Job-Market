@@ -1,7 +1,7 @@
 export interface Company {
   id: string;
   name: string;
-  ats: 'greenhouse' | 'lever' | 'ashby' | 'smartrecruiters' | 'workday' | 'icims';
+  ats: 'greenhouse' | 'lever' | 'ashby' | 'smartrecruiters' | 'workday' | 'icims' | 'custom';
   ats_handle: string;
 }
 
