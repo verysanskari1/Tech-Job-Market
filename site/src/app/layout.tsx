@@ -4,7 +4,7 @@ import Navbar from '@/components/Navbar';
 import TickerTape from '@/components/TickerTape';
 import Footer from '@/components/Footer';
 import NewsPopup from '@/components/NewsPopup';
-import { getMovers, getTopCompanies } from '@/lib/queries';
+import { getMovers, getTopCompanies, getNewsFromDB } from '@/lib/queries';
 import { getMockNews } from '@/lib/news-mock';
 import { slugify } from '@/lib/slug';
 import type { CompanyStat } from '@/components/NewsRotator';
@@ -25,11 +25,13 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // Navbar + ticker + news popup are global — fetch the data they need here
   // so every page renders them without each page worrying about it.
-  const [movers, companies] = await Promise.all([
+  const [movers, companies, dbNews] = await Promise.all([
     getMovers().catch(() => []),
     getTopCompanies(999, 7).catch(() => []),
+    getNewsFromDB(60).catch(() => []),
   ]);
-  const news = getMockNews();
+  // Prefer real news; fall back to mock until the news-scraper has run.
+  const news = dbNews.length > 0 ? dbNews : getMockNews();
 
   const companyStats: Record<string, CompanyStat> = {};
   for (const co of companies) {
