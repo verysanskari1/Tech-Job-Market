@@ -1,6 +1,10 @@
 import type { FetchedRole } from '../types.js';
 import { fetchMicrosoft } from './microsoft.js';
 import { fetchApple } from './apple.js';
+import { fetchGitHub } from './github.js';
+import { fetchAtlassian } from './atlassian.js';
+import { fetchNetflix } from './netflix.js';
+import { fetchShopify } from './shopify.js';
 
 // Registry of custom scrapers, keyed by `ats_handle` for rows with
 // `ats = 'custom'`. To add a new company:
@@ -17,6 +21,10 @@ type CustomFetcher = () => Promise<FetchedRole[]>;
 const REGISTRY: Record<string, CustomFetcher> = {
   microsoft: fetchMicrosoft,
   apple:     fetchApple,
+  github:    fetchGitHub,
+  atlassian: fetchAtlassian,
+  netflix:   fetchNetflix,
+  shopify:   fetchShopify,
 };
 
 export async function fetchCustom(handle: string): Promise<FetchedRole[]> {
