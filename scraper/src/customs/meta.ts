@@ -1,56 +1,95 @@
 import type { FetchedRole } from '../types.js';
 
-// Meta exposes a public job search endpoint that returns JSON. The
-// metacareers.com SPA hits this on every search/filter. Pagination is
-// via `page` (1-indexed). Result count per page is large (~50).
+// Meta careers is a Facebook GraphQL endpoint. The careers page hits
+// `CareersJobSearchResultsDataQuery` with a persisted `doc_id` and
+// returns the full job list in one response (no pagination — set
+// `results_per_page: null`).
 //
-// NOTE: This endpoint is best-effort — Meta sometimes routes through
-// GraphQL with rotating doc_ids. If this 404s, switch to GraphQL by
-// inspecting metacareers.com network tab.
-const ENDPOINT = 'https://www.metacareers.com/v3/api/jobs/';
-const PAGE_SIZE = 50;
-const MAX_PAGES = 200;
+// The tricky part: Meta requires an `lsd` CSRF token, extracted from
+// the initial page HTML.
+//
+// The doc_id below was captured from a live request. If Meta rotates
+// it, the scraper will start failing with a "Query not found" error
+// and we'll need to refresh it.
+const GRAPHQL_URL = 'https://www.metacareers.com/graphql';
+const PAGE_URL = 'https://www.metacareers.com/jobs/';
+const DOC_ID = '29615178951461218';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Job = any;
 
+async function getLsdToken(): Promise<string> {
+  // Meta embeds the CSRF token in a script tag like:  "LSD",[],{"token":"AdT..."}
+  const res = await fetch(PAGE_URL, {
+    headers: {
+      Accept: 'text/html',
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+    },
+  });
+  if (!res.ok) throw new Error(`Meta page: HTTP ${res.status}`);
+  const html = await res.text();
+  const m = html.match(/"LSD",\[\],\{"token":"([^"]+)"\}/);
+  if (!m) throw new Error('Meta: could not extract LSD token from page HTML');
+  return m[1];
+}
+
 export async function fetchMeta(): Promise<FetchedRole[]> {
-  const roles: FetchedRole[] = [];
+  const lsd = await getLsdToken();
 
-  for (let page = 1; page <= MAX_PAGES; page++) {
-    const url = `${ENDPOINT}?page=${page}&results_per_page=${PAGE_SIZE}`;
-    const res = await fetch(url, {
-      headers: {
-        Accept: 'application/json',
-        'User-Agent': 'Mozilla/5.0 (compatible; tech-job-market-scraper/1.0)',
-      },
-    });
-    if (!res.ok) throw new Error(`Meta: HTTP ${res.status} on page ${page}`);
+  const variables = {
+    search_input: {
+      q: null,
+      divisions: [], offices: [], roles: [], leadership_levels: [],
+      saved_jobs: [], saved_searches: [], sub_teams: [], teams: [],
+      is_leadership: false,
+      is_remote_only: false,
+      sort_by_new: false,
+      results_per_page: null,
+    },
+  };
 
-    const data = await res.json() as {
-      jobs?: Job[];
-      results?: Job[];
-      data?: { jobs?: Job[] };
-      total?: number;
+  const body = new URLSearchParams({
+    lsd,
+    fb_api_caller_class: 'RelayModern',
+    fb_api_req_friendly_name: 'CareersJobSearchResultsDataQuery',
+    server_timestamps: 'true',
+    variables: JSON.stringify(variables),
+    doc_id: DOC_ID,
+  });
+
+  const res = await fetch(GRAPHQL_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'X-FB-LSD': lsd,
+      'X-FB-Friendly-Name': 'CareersJobSearchResultsDataQuery',
+      Accept: '*/*',
+      Origin: 'https://www.metacareers.com',
+      Referer: 'https://www.metacareers.com/jobs/',
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+    },
+    body: body.toString(),
+  });
+  if (!res.ok) throw new Error(`Meta: HTTP ${res.status}`);
+
+  const data = await res.json() as {
+    data?: {
+      job_search_with_featured_jobs?: {
+        all_jobs?: Job[];
+        featured_jobs?: Job[];
+      };
     };
-    const jobs = data.jobs ?? data.results ?? data.data?.jobs ?? [];
-    if (jobs.length === 0) break;
+  };
 
-    for (const j of jobs) {
-      roles.push({
-        ats_role_id:  String(j.id ?? j.job_id ?? j.reqId ?? ''),
-        title_raw:    String(j.title ?? j.name ?? ''),
-        department_raw: j.team?.name ?? j.team ?? j.division ?? null,
-        location:     Array.isArray(j.locations)
-                        ? j.locations.map((l: { name?: string } | string) =>
-                            typeof l === 'string' ? l : l.name).filter(Boolean).join(' / ')
-                        : (j.location ?? null),
-        posted_at:    j.posted_date ?? j.createdAt ?? null,
-      });
-    }
+  const allJobs = data.data?.job_search_with_featured_jobs?.all_jobs ?? [];
+  const featured = data.data?.job_search_with_featured_jobs?.featured_jobs ?? [];
 
-    if (jobs.length < PAGE_SIZE) break;
-  }
-
-  return roles;
+  // Merge — dedupe happens upstream in main.ts.
+  return [...allJobs, ...featured].map(j => ({
+    ats_role_id:  String(j.id ?? ''),
+    title_raw:    String(j.title ?? ''),
+    department_raw: Array.isArray(j.teams) ? j.teams.join(' / ') : (j.teams ?? null),
+    location:     Array.isArray(j.locations) ? j.locations.join(' / ') : (j.locations ?? null),
+    posted_at:    null, // Not exposed in this query
+  }));
 }
