@@ -23,8 +23,8 @@ interface Props {
 
 const INITIAL_CONSTITUENTS = 12;
 
-// Default index — AI-first. Falls back to the first series if AI 50 isn't present.
-const DEFAULT_INDEX_NAME = 'AI 50';
+// Default index — All tech. Total series rolls up every company we track.
+const DEFAULT_INDEX_NAME = 'Total';
 
 // Time range filters. Each defines both the chart slice and the delta period.
 // YTD is computed dynamically from Jan 1 of the current year.
@@ -59,7 +59,6 @@ function sliceForRange(points: IndexSeries['points'], range: RangeId) {
 }
 
 export default function HeroChart({ series }: Props) {
-  // Default to AI 50 — AI-first framing. Falls back to first series.
   const initialName =
     series.find(s => s.name === DEFAULT_INDEX_NAME)?.name ?? series[0]?.name ?? 'Total';
 
