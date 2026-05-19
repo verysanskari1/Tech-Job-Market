@@ -5,6 +5,8 @@ import { fetchGitHub } from './github.js';
 import { fetchAtlassian } from './atlassian.js';
 import { fetchNetflix } from './netflix.js';
 import { fetchShopify } from './shopify.js';
+import { fetchMeta } from './meta.js';
+import { fetchGoogle } from './google.js';
 
 // Registry of custom scrapers, keyed by `ats_handle` for rows with
 // `ats = 'custom'`. To add a new company:
@@ -25,6 +27,8 @@ const REGISTRY: Record<string, CustomFetcher> = {
   atlassian: fetchAtlassian,
   netflix:   fetchNetflix,
   shopify:   fetchShopify,
+  meta:      fetchMeta,
+  google:    fetchGoogle,
 };
 
 export async function fetchCustom(handle: string): Promise<FetchedRole[]> {
