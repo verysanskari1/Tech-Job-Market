@@ -306,9 +306,49 @@ export async function getAllIndexSeries(days = 365): Promise<IndexSeries[]> {
     memberships.set(c.id, c);
   }
 
-  // For each (index, date) accumulate total_open, and remember which companies
-  // contributed (used to power the "companies in this index" drill-in).
-  const byIndexDate = new Map<string, Map<string, number>>(); // index -> (date -> total)
+  // Group snapshots by company, sorted ascending by date.
+  // We forward-fill across the date axis (per company) so each chart point
+  // reflects "the most recent open-role count we knew at this date" for
+  // every tracked company — not just the ones that happened to snapshot
+  // on that exact day. Without this, the chart and hero count nosedive
+  // whenever the scraper partially fails or stragglers haven't run yet.
+  const snapsByCompany = new Map<string, Array<{ date: string; total: number }>>();
+  const allDatesSet = new Set<string>();
+  for (const row of (snapshots ?? []) as Array<{
+    captured_at: string;
+    company_id: string;
+    total_open: number;
+  }>) {
+    if (!memberships.has(row.company_id)) continue;
+    const arr = snapsByCompany.get(row.company_id) ?? [];
+    arr.push({ date: row.captured_at, total: Number(row.total_open) || 0 });
+    snapsByCompany.set(row.company_id, arr);
+    allDatesSet.add(row.captured_at);
+  }
+  for (const arr of Array.from(snapsByCompany.values())) {
+    arr.sort((a: { date: string }, b: { date: string }) => a.date.localeCompare(b.date));
+  }
+  const allDates = Array.from(allDatesSet).sort();
+
+  // For each company, forward-fill: walk the global date axis and remember
+  // their most recent total at every step. Output: company_id -> (date -> total).
+  const filledByCompany = new Map<string, Map<string, number>>();
+  for (const [companyId, snaps] of Array.from(snapsByCompany.entries())) {
+    const filled = new Map<string, number>();
+    let lastTotal: number | null = null;
+    let snapIdx = 0;
+    for (const date of allDates) {
+      while (snapIdx < snaps.length && snaps[snapIdx].date <= date) {
+        lastTotal = snaps[snapIdx].total;
+        snapIdx++;
+      }
+      if (lastTotal !== null) filled.set(date, lastTotal);
+    }
+    filledByCompany.set(companyId, filled);
+  }
+
+  // Roll each company up into every index it belongs to (and into "Total").
+  const byIndexDate = new Map<string, Map<string, number>>(); // index -> (date -> sum)
   const byIndexCompanyLatest = new Map<
     string,
     Map<string, { name: string; careers_url: string | null; total: number }>
@@ -318,28 +358,26 @@ export async function getAllIndexSeries(days = 365): Promise<IndexSeries[]> {
     if (!byIndexDate.has(name)) byIndexDate.set(name, new Map());
     if (!byIndexCompanyLatest.has(name)) byIndexCompanyLatest.set(name, new Map());
   };
+  ensureIndex('Total');
 
-  // Find the latest date so we know which snapshots count toward "companies in this index"
-  let latestDate = '';
-  for (const row of (snapshots ?? []) as Array<{ captured_at: string }>) {
-    if (row.captured_at > latestDate) latestDate = row.captured_at;
-  }
-
-  for (const row of (snapshots ?? []) as Array<{
-    captured_at: string;
-    company_id: string;
-    total_open: number;
-  }>) {
-    const member = memberships.get(row.company_id);
+  for (const [companyId, filled] of Array.from(filledByCompany.entries())) {
+    const member = memberships.get(companyId);
     if (!member) continue;
-    const total = Number(row.total_open) || 0;
+    const memberIndexes = ['Total', ...(member.indexes ?? [])];
 
-    // "Total" series: every company
-    ensureIndex('Total');
-    const totalDates = byIndexDate.get('Total')!;
-    totalDates.set(row.captured_at, (totalDates.get(row.captured_at) ?? 0) + total);
-    if (row.captured_at === latestDate) {
-      byIndexCompanyLatest.get('Total')!.set(member.id, {
+    for (const idx of memberIndexes) {
+      ensureIndex(idx);
+      const dateMap = byIndexDate.get(idx)!;
+      for (const [date, total] of Array.from(filled.entries())) {
+        dateMap.set(date, (dateMap.get(date) ?? 0) + total);
+      }
+    }
+
+    // Constituents: each company's most-recent value (last entry in `filled`).
+    let latestForCompany = 0;
+    for (const total of Array.from(filled.values())) latestForCompany = total;
+    if (latestForCompany > 0 || filled.size > 0) {
+      const constituent = {
         name: member.name,
         careers_url: bestCareersUrl({
           careersUrl: member.careers_url,
@@ -347,25 +385,10 @@ export async function getAllIndexSeries(days = 365): Promise<IndexSeries[]> {
           atsHandle: member.ats_handle,
           name: member.name,
         }),
-        total,
-      });
-    }
-
-    for (const idx of member.indexes ?? []) {
-      ensureIndex(idx);
-      const dates = byIndexDate.get(idx)!;
-      dates.set(row.captured_at, (dates.get(row.captured_at) ?? 0) + total);
-      if (row.captured_at === latestDate) {
-        byIndexCompanyLatest.get(idx)!.set(member.id, {
-          name: member.name,
-        careers_url: bestCareersUrl({
-          careersUrl: member.careers_url,
-          ats: member.ats,
-          atsHandle: member.ats_handle,
-          name: member.name,
-        }),
-        total,
-        });
+        total: latestForCompany,
+      };
+      for (const idx of memberIndexes) {
+        byIndexCompanyLatest.get(idx)!.set(member.id, constituent);
       }
     }
   }
