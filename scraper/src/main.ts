@@ -64,6 +64,16 @@ for (const company of (companies ?? []) as Company[]) {
     continue;
   }
 
+  // Dedupe by ats_role_id. Paginated APIs and HTML scrapers can occasionally
+  // surface the same role twice, which makes Postgres ON CONFLICT fail with
+  // "command cannot affect row a second time". Keep the first occurrence.
+  const seenIds = new Set<string>();
+  fetched = fetched.filter(r => {
+    if (!r.ats_role_id || seenIds.has(r.ats_role_id)) return false;
+    seenIds.add(r.ats_role_id);
+    return true;
+  });
+
   log.info(`[${company.name}] ${fetched.length} open roles found`);
 
   if (fetched.length === 0) {
