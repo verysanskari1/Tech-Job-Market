@@ -47,7 +47,9 @@ export async function fetchLever(handle: string): Promise<FetchedRole[]> {
 }
 
 export async function fetchAshby(handle: string, proxyUrl?: string): Promise<FetchedRole[]> {
-  const url = `https://api.ashbyhq.com/posting-api/job-board/${handle}`;
+  // Some Ashby boards use multi-word handles (e.g. "superhuman platform inc")
+  // that need URL encoding to survive the request.
+  const url = `https://api.ashbyhq.com/posting-api/job-board/${encodeURIComponent(handle)}`;
 
   let res: Response;
   if (proxyUrl) {
