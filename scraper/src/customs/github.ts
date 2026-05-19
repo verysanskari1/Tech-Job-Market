@@ -6,8 +6,8 @@ import type { FetchedRole } from '../types.js';
 //
 // NOTE: Field names below are best guesses based on common Jibe responses.
 // Verify against a live response and adjust if needed.
-const PAGE_SIZE = 25;
-const MAX_PAGES = 100;
+const PAGE_SIZE = 10;
+const MAX_PAGES = 200;
 const BASE = 'https://www.github.careers/api/jobs';
 const DOMAIN = 'githubinc.jibeapply.com';
 
