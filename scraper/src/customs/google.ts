@@ -1,12 +1,13 @@
 import * as cheerio from 'cheerio';
 import type { FetchedRole } from '../types.js';
+import { fetchWithRetry } from './_util.js';
 
 // Google careers is server-rendered HTML at this URL with pagination
-// via ?page=N. Each page shows ~20 jobs. The "1,197 jobs matched"
-// header gives us the total count.
+// via ?page=N. Each job links to /about/careers/applications/jobs/results/{id}.
 //
-// Each job card links to /about/careers/applications/jobs/results/{id}-{slug}
-// — we extract the numeric id as the ats_role_id.
+// Google's HTML changes often — keep selectors permissive: any anchor
+// to /jobs/results/{numeric-id}, with title = closest h3/h2 within the
+// surrounding card, falling back to the link text itself.
 const BASE = 'https://www.google.com/about/careers/applications/jobs/results/';
 const MAX_PAGES = 200;
 
@@ -16,43 +17,53 @@ export async function fetchGoogle(): Promise<FetchedRole[]> {
 
   for (let page = 1; page <= MAX_PAGES; page++) {
     const url = `${BASE}?page=${page}`;
-    const res = await fetch(url, {
-      headers: {
-        Accept: 'text/html',
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-      },
-    });
-    if (!res.ok) throw new Error(`Google: HTTP ${res.status} on page ${page}`);
+    let html: string;
+    try {
+      const res = await fetchWithRetry(url, {
+        headers: {
+          Accept: 'text/html',
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+          'Accept-Language': 'en-US,en;q=0.9',
+        },
+      });
+      if (!res.ok) throw new Error(`Google: HTTP ${res.status} on page ${page}`);
+      html = await res.text();
+    } catch (err) {
+      if (page === 1) throw err;
+      break; // tolerate a single later-page failure
+    }
 
-    const html = await res.text();
     const $ = cheerio.load(html);
-
     let pageCount = 0;
 
-    // Each job has a link to /about/careers/applications/jobs/results/{id}-{slug}.
-    // The job ID is the numeric prefix.
+    // Anchor to /jobs/results/{numeric-id}. Some Google pages also link
+    // by job slug — strip query/hash before matching.
     $('a[href*="/jobs/results/"]').each((_, el) => {
-      const href = $(el).attr('href') ?? '';
+      const href = ($(el).attr('href') ?? '').split('?')[0].split('#')[0];
       const idMatch = href.match(/\/jobs\/results\/(\d+)/);
       if (!idMatch) return;
       const id = idMatch[1];
       if (seen.has(id)) return;
 
-      // The card containing the link holds the title and "Google | location" line.
-      const card = $(el).closest('li, article, div[role="listitem"]').first();
-      const block = card.length ? card : $(el).parent();
+      // Walk up the DOM until we find a card-like ancestor with the title.
+      // Google wraps each job in a <li> or <div role="listitem">.
+      const card =
+        $(el).closest('li').first().length ? $(el).closest('li').first() :
+        $(el).closest('[role="listitem"]').first().length ? $(el).closest('[role="listitem"]').first() :
+        $(el).parent();
 
-      // Title is usually an h2/h3 inside the card.
-      const title = block.find('h2, h3').first().text().trim()
-        || $(el).text().trim().split('\n')[0]?.trim()
-        || '';
-      if (!title || title.toLowerCase().includes('learn more')) return;
+      const title =
+        card.find('h2, h3, h4').first().text().trim() ||
+        $(el).text().trim().split('\n').map(s => s.trim()).filter(Boolean)[0] ||
+        '';
+      if (!title || /^learn more$/i.test(title)) return;
 
-      // Location appears as "Google | {locations}" near the title.
+      // Location: "Google | {city, state}" pattern appears in Google's
+      // current layout. Fall back to whatever text follows the title.
       let location: string | null = null;
-      const locText = block.text();
-      const locMatch = locText.match(/Google\s*\|\s*([^\n]+)/);
-      if (locMatch) location = locMatch[1].trim();
+      const cardText = card.text();
+      const piped = cardText.match(/Google\s*\|\s*([^\n]+?)(?:Learn more|$)/);
+      if (piped) location = piped[1].trim();
 
       seen.add(id);
       roles.push({
