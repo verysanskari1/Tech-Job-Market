@@ -1,4 +1,5 @@
 import type { FetchedRole } from '../types.js';
+import { fetchWithRetry } from './_util.js';
 
 // Microsoft's careers site queries this public JSON endpoint internally.
 // 20 jobs per page, paginated via `pg`. Returns ~1500+ jobs total.
@@ -17,7 +18,7 @@ export async function fetchMicrosoft(): Promise<FetchedRole[]> {
 
   for (let page = 1; page <= MAX_PAGES; page++) {
     const url = `${ENDPOINT}?q=&l=en_us&pg=${page}&pgSz=${PAGE_SIZE}&o=Recent&flt=true`;
-    const res = await fetch(url, {
+    const res = await fetchWithRetry(url, {
       headers: {
         Accept: 'application/json',
         'User-Agent': 'tech-job-market-scraper/1.0',
