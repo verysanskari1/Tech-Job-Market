@@ -18,7 +18,7 @@ import { fetchGoogle } from './google.js';
 // Unknown handles fall through to a clear error so they're easy to spot
 // in the scraper log.
 
-type CustomFetcher = () => Promise<FetchedRole[]>;
+type CustomFetcher = (proxyUrl?: string) => Promise<FetchedRole[]>;
 
 const REGISTRY: Record<string, CustomFetcher> = {
   microsoft: fetchMicrosoft,
@@ -31,10 +31,10 @@ const REGISTRY: Record<string, CustomFetcher> = {
   google:    fetchGoogle,
 };
 
-export async function fetchCustom(handle: string): Promise<FetchedRole[]> {
+export async function fetchCustom(handle: string, proxyUrl?: string): Promise<FetchedRole[]> {
   const fn = REGISTRY[handle];
   if (!fn) throw new Error(`No custom scraper registered for "${handle}"`);
-  return fn();
+  return fn(proxyUrl);
 }
 
 export function hasCustomScraper(handle: string): boolean {
