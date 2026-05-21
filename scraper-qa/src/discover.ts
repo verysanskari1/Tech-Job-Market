@@ -12,27 +12,23 @@
 // Edit COMPANIES_TO_INVESTIGATE below before running.
 
 const COMPANIES_TO_INVESTIGATE: string[] = [
-  // batch3 failures (Greenhouse 404)
-  'OpenSea', 'Polygon', 'Uniswap', 'Ledger', 'Crypto.com', 'Solana', 'dYdX',
-  'Chainalysis', 'Hims & Hers', 'Ro', 'Lyra Health', 'Spring Health', 'Tempus AI',
-  'Oscar Health', 'Wealthfront', 'AngelList', 'Pilot', 'BrowserStack', 'Freshworks',
-  'Hasura', 'Atlan', 'DigitalOcean', 'Notion Labs', 'Headspace', 'Strava',
-  'Eventbrite', 'Patreon', 'Mailchimp', 'SendGrid', 'Heap', 'Convoy', 'Turo',
-  'Crusoe', 'Lambda Labs', 'Tenable', 'SentinelOne', 'Cloudera', 'Boston Dynamics',
-  'Spotify',
-  // batch3 failures (Lever 404)
-  'Slice', 'BharatPe', 'NoBroker', 'Acko',
-  // batch3 failures (Ashby 404)
-  'Ironclad', 'Pulley', 'OpenStore',
-  // earlier failures
-  'Hugging Face', 'Whatnot', 'Mercari', 'Revolut', 'Niantic', 'Crunchbase',
-  'Salesforce', 'Unity', 'Snowflake',
+  // Still-broken after first discover.ts pass
+  'Polygon', 'Crypto.com', 'dYdX', 'Chainalysis',
+  'Hims & Hers', 'Lyra Health', 'Spring Health', 'Tempus AI',
+  'BrowserStack', 'Hasura', 'DigitalOcean',
+  'Headspace', 'Convoy', 'Turo',
+  'Lambda Labs', 'SentinelOne', 'Cloudera', 'Boston Dynamics',
+  'BharatPe', 'Acko', 'Pulley', 'OpenStore',
+  'Hugging Face', 'Revolut', 'Niantic', 'Crunchbase',
+  'Salesforce', 'Unity',
 ];
 
 interface Candidate {
-  ats: 'greenhouse' | 'lever' | 'ashby' | 'smartrecruiters';
+  ats: 'greenhouse' | 'lever' | 'ashby' | 'smartrecruiters' | 'workday' | 'icims';
   handle: string;
   url: string;
+  method?: 'GET' | 'POST';
+  body?: string;
 }
 
 function slugVariations(name: string): string[] {
@@ -47,7 +43,11 @@ function slugVariations(name: string): string[] {
     `${noSpace}labs`,
     `${noSpace}technologies`,
     `${noSpace}ai`,
+    `${noSpace}global`,
+    `${noSpace}com`,
     noSpace.replace(/inc$/, ''),
+    noSpace.replace(/labs$/, ''),
+    noSpace.replace(/ai$/, ''),
   ]);
   return [...variations].filter(s => s.length >= 2);
 }
@@ -68,6 +68,38 @@ function buildCandidates(name: string): Candidate[] {
     handle: noSpace,
     url: `https://api.smartrecruiters.com/v1/companies/${noSpace}/postings?limit=1`,
   });
+
+  // ── Workday probes ──
+  // URL format: https://{host}.myworkdayjobs.com/wday/cxs/{tenant}/{site}/jobs (POST)
+  // Common hosts: {tenant}.wd1, {tenant}.wd3, {tenant}.wd5
+  // Common sites: External_Career_Site, External, Careers, {Tenant} (TitleCase)
+  const tenantSlug = noSpace.toLowerCase();
+  const titleCase = name.replace(/[^a-zA-Z0-9 ]/g, '').split(/\s+/).map(w => w[0]?.toUpperCase() + w.slice(1)).join('_');
+  const sites = ['External_Career_Site', 'External', 'Careers', titleCase];
+  for (const sub of ['wd1', 'wd3', 'wd5', 'wd2', 'wd12', 'wd6', 'wd103']) {
+    for (const site of sites) {
+      if (!site) continue;
+      const host = `${tenantSlug}.${sub}`;
+      out.push({
+        ats: 'workday',
+        handle: `${host}:${site}`,
+        url: `https://${host}.myworkdayjobs.com/wday/cxs/${tenantSlug}/${site}/jobs`,
+        method: 'POST',
+        body: JSON.stringify({ limit: 1, offset: 0, appliedFacets: {}, searchText: '' }),
+      });
+    }
+  }
+
+  // ── iCIMS probes (no public API — HTML page check) ──
+  for (const prefix of [`careers-${tenantSlug}`, tenantSlug, `${tenantSlug}-careers`]) {
+    out.push({
+      ats: 'icims',
+      handle: prefix,
+      url: `https://${prefix}.icims.com/jobs/search?ss=1&searchKeyword=&searchLocation=&pr=0&in_iframe=1`,
+      method: 'GET',
+    });
+  }
+
   return out;
 }
 
@@ -79,18 +111,34 @@ interface Result {
 
 async function tryCandidate(c: Candidate): Promise<Result | null> {
   try {
-    const res = await fetch(c.url, {
-      headers: { Accept: 'application/json', 'User-Agent': 'tech-job-market-discover/1.0' },
+    const init: RequestInit = {
+      method: c.method ?? 'GET',
+      headers: c.ats === 'icims'
+        ? { Accept: 'text/html', 'User-Agent': 'Mozilla/5.0' }
+        : { Accept: 'application/json', 'Content-Type': 'application/json', 'User-Agent': 'tech-job-market-discover/1.0' },
       signal: AbortSignal.timeout(8000),
-    });
+    };
+    if (c.body) init.body = c.body;
+
+    const res = await fetch(c.url, init);
     if (!res.ok) return null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = await res.json() as any;
+
     let jobCount = 0;
-    if (c.ats === 'greenhouse') jobCount = (data.jobs ?? []).length;
-    else if (c.ats === 'lever') jobCount = Array.isArray(data) ? data.length : 0;
-    else if (c.ats === 'ashby') jobCount = (data.jobs ?? data.jobPostings ?? []).length;
-    else if (c.ats === 'smartrecruiters') jobCount = (data.totalFound ?? data.content?.length ?? 0);
+    if (c.ats === 'icims') {
+      // No JSON — just check the HTML mentions jobs. iCIMS pages contain
+      // /jobs/{id}/ links when there are openings.
+      const html = await res.text();
+      const matches = html.match(/\/jobs\/\d+\//g) ?? [];
+      jobCount = new Set(matches).size;
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data = await res.json() as any;
+      if (c.ats === 'greenhouse') jobCount = (data.jobs ?? []).length;
+      else if (c.ats === 'lever') jobCount = Array.isArray(data) ? data.length : 0;
+      else if (c.ats === 'ashby') jobCount = (data.jobs ?? data.jobPostings ?? []).length;
+      else if (c.ats === 'smartrecruiters') jobCount = (data.totalFound ?? data.content?.length ?? 0);
+      else if (c.ats === 'workday') jobCount = data.total ?? (data.jobPostings ?? []).length;
+    }
     if (jobCount === 0) return null;
     return { ats: c.ats, handle: c.handle, jobCount };
   } catch {
