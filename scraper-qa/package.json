@@ -5,7 +5,8 @@
   "scripts": {
     "build": "tsc",
     "check": "npm run build && node dist/check.js",
-    "check:verbose": "npm run build && VERBOSE=1 node dist/check.js"
+    "check:verbose": "npm run build && VERBOSE=1 node dist/check.js",
+    "discover": "npm run build && node dist/discover.js"
   },
   "dependencies": {
     "@supabase/postgrest-js": "^1.15.0"
