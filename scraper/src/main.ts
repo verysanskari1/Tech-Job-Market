@@ -57,7 +57,7 @@ for (const company of (companies ?? []) as Company[]) {
     else if (company.ats === 'smartrecruiters') fetched = await fetchSmartRecruiters(company.ats_handle);
     else if (company.ats === 'workday')         fetched = await fetchWorkday(company.ats_handle, ashbyProxyUrl);
     else if (company.ats === 'icims')           fetched = await fetchIcims(company.ats_handle);
-    else if (company.ats === 'custom')          fetched = await fetchCustom(company.ats_handle);
+    else if (company.ats === 'custom')          fetched = await fetchCustom(company.ats_handle, ashbyProxyUrl);
     else { log.warning(`[${company.name}] Unknown ATS "${company.ats}" — skipping`); continue; }
   } catch (err) {
     log.error(`[${company.name}] Fetch failed: ${(err as Error).message}`);

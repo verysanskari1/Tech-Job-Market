@@ -13,7 +13,7 @@ const ENDPOINT = 'https://gcsservices.careers.microsoft.com/search/api/v1/search
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Job = any;
 
-export async function fetchMicrosoft(): Promise<FetchedRole[]> {
+export async function fetchMicrosoft(proxyUrl?: string): Promise<FetchedRole[]> {
   const roles: FetchedRole[] = [];
 
   for (let page = 1; page <= MAX_PAGES; page++) {
@@ -21,9 +21,9 @@ export async function fetchMicrosoft(): Promise<FetchedRole[]> {
     const res = await fetchWithRetry(url, {
       headers: {
         Accept: 'application/json',
-        'User-Agent': 'tech-job-market-scraper/1.0',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
       },
-    });
+    }, 3, proxyUrl);
     if (!res.ok) throw new Error(`Microsoft: HTTP ${res.status} on page ${page}`);
 
     const data = await res.json() as {
