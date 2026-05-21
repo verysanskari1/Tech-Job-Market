@@ -1,11 +1,13 @@
 import type { FetchedRole } from '../types.js';
 import { fetchWithRetry } from './_util.js';
 
-// Apple's careers site POSTs to this JSON endpoint internally. They
-// require an `x-apple-csrf-token` header — bootstrap one by fetching
-// the search page first and extracting it from the embedded HTML/JSON.
+// Apple's careers site POSTs to this JSON endpoint. Their previous flow
+// required an `x-apple-csrf-token` header pulled from the HTML, but the
+// search page is now JS-rendered with no CSRF embedded — so we rely on
+// session cookies only. We fetch the page first to pick up the
+// `jobs=` and `jssid=` cookies, then send those with the API call.
 //
-// Response shape (verified): { res: [{ postingTitle, positionID, ... }] }
+// Response shape: { res: [{ postingTitle, positionID, ... }] }
 const SEARCH_PAGE = 'https://jobs.apple.com/en-us/search';
 const ENDPOINT = 'https://jobs.apple.com/api/v1/rolesearch';
 const PAGE_SIZE = 20;
@@ -14,60 +16,54 @@ const MAX_PAGES = 300;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Job = any;
 
-async function getCsrfToken(): Promise<{ csrf: string; cookie: string }> {
+async function bootstrap(proxyUrl?: string): Promise<{ cookie: string; csrf: string | null }> {
   const res = await fetchWithRetry(SEARCH_PAGE, {
     headers: {
       Accept: 'text/html',
       'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
     },
-  });
+  }, 3, proxyUrl);
   if (!res.ok) throw new Error(`Apple search page: HTTP ${res.status}`);
-  const html = await res.text();
 
-  // Apple embeds the CSRF token in the page HTML. Try a few known patterns.
-  const patterns = [
-    /"csrfToken"\s*:\s*"([a-f0-9]{32,})"/i,
-    /name="csrf-token"\s+content="([a-f0-9]{32,})"/i,
-    /csrf_token['"]?\s*[:=]\s*['"]([a-f0-9]{32,})['"]/i,
-  ];
-  let csrf: string | null = null;
-  for (const p of patterns) {
-    const m = html.match(p);
-    if (m) { csrf = m[1]; break; }
-  }
-  if (!csrf) throw new Error('Apple: could not extract csrf token from search page');
-
-  // Apple sets a `jobs` session cookie on this page — pass it through.
   const setCookie = res.headers.get('set-cookie') ?? '';
   const cookie = setCookie
     .split(/,\s*(?=[a-zA-Z0-9_]+=)/)
     .map(c => c.split(';')[0])
     .join('; ');
 
-  return { csrf, cookie };
+  // Best-effort CSRF extraction — most Apple deployments embed nothing
+  // in the page, but if a token IS present we send it; otherwise omit.
+  const html = await res.text();
+  const csrfMatch = html.match(/"csrfToken"\s*:\s*"([a-f0-9]{32,})"/i)
+    ?? html.match(/csrf[_-]?token['"]?\s*[:=]\s*['"]([a-f0-9]{32,})['"]/i);
+  const csrf = csrfMatch ? csrfMatch[1] : null;
+
+  return { cookie, csrf };
 }
 
-export async function fetchApple(): Promise<FetchedRole[]> {
-  const { csrf, cookie } = await getCsrfToken();
+export async function fetchApple(proxyUrl?: string): Promise<FetchedRole[]> {
+  const { cookie, csrf } = await bootstrap(proxyUrl);
   const roles: FetchedRole[] = [];
 
   for (let page = 1; page <= MAX_PAGES; page++) {
     const body = JSON.stringify({ page, locale: 'en_us' });
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Accept: '*/*',
+      Cookie: cookie,
+      Origin: 'https://jobs.apple.com',
+      Referer: 'https://jobs.apple.com/en-us/search',
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+      Locale: 'en_US',
+      BrowserLocale: 'en-us',
+    };
+    if (csrf) headers['X-Apple-CSRF-Token'] = csrf;
+
     const res = await fetchWithRetry(ENDPOINT, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: '*/*',
-        'X-Apple-CSRF-Token': csrf,
-        Cookie: cookie,
-        Origin: 'https://jobs.apple.com',
-        Referer: 'https://jobs.apple.com/en-us/search',
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-        Locale: 'en_US',
-        BrowserLocale: 'en-us',
-      },
+      headers,
       body,
-    });
+    }, 3, proxyUrl);
     if (!res.ok) throw new Error(`Apple: HTTP ${res.status} on page ${page}`);
 
     const data = await res.json() as { res?: Job[] };

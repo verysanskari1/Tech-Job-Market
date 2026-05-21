@@ -3,11 +3,18 @@ import type { FetchedRole } from '../types.js';
 import { fetchWithRetry } from './_util.js';
 
 // Google careers is server-rendered HTML at this URL with pagination
-// via ?page=N. Each job links to /about/careers/applications/jobs/results/{id}.
+// via ?page=N. The job listing structure (verified from a live page):
 //
-// Google's HTML changes often — keep selectors permissive: any anchor
-// to /jobs/results/{numeric-id}, with title = closest h3/h2 within the
-// surrounding card, falling back to the link text itself.
+//   <li class="lLd3Je" ssk="18:128085257684427462">
+//     <div jscontroller="snXUJb">
+//       <h3 class="QJPWVe">Software Engineer, On Device Machine Learning</h3>
+//       <p class="l103df">Google | <span>Taipei, Taiwan</span></p>
+//       <a class="WpHeLc..." href="jobs/results/128085257684427462-software-engineer-on-device-machine-learning">
+//     </div>
+//   </li>
+//
+// Note hrefs are relative (no leading slash) — an earlier draft required
+// a leading slash and matched nothing.
 const BASE = 'https://www.google.com/about/careers/applications/jobs/results/';
 const MAX_PAGES = 200;
 
@@ -30,40 +37,36 @@ export async function fetchGoogle(): Promise<FetchedRole[]> {
       html = await res.text();
     } catch (err) {
       if (page === 1) throw err;
-      break; // tolerate a single later-page failure
+      break;
     }
 
     const $ = cheerio.load(html);
     let pageCount = 0;
 
-    // Anchor to /jobs/results/{numeric-id}. Some Google pages also link
-    // by job slug — strip query/hash before matching.
-    $('a[href*="/jobs/results/"]').each((_, el) => {
-      const href = ($(el).attr('href') ?? '').split('?')[0].split('#')[0];
-      const idMatch = href.match(/\/jobs\/results\/(\d+)/);
+    // Iterate each job card directly — more reliable than walking up
+    // from anchors when the markup is heavily nested with Google's
+    // Material Design wrappers.
+    $('li.lLd3Je').each((_, li) => {
+      const $li = $(li);
+
+      // Job id lives in the "Learn more" anchor's href:
+      // `jobs/results/{id}-{slug}` (relative — no leading slash).
+      const href = $li.find('a[href*="jobs/results/"]').first().attr('href') ?? '';
+      const idMatch = href.match(/jobs\/results\/(\d+)/);
       if (!idMatch) return;
       const id = idMatch[1];
       if (seen.has(id)) return;
 
-      // Walk up the DOM until we find a card-like ancestor with the title.
-      // Google wraps each job in a <li> or <div role="listitem">.
-      const card =
-        $(el).closest('li').first().length ? $(el).closest('li').first() :
-        $(el).closest('[role="listitem"]').first().length ? $(el).closest('[role="listitem"]').first() :
-        $(el).parent();
+      const title = $li.find('h3.QJPWVe').first().text().trim();
+      if (!title) return;
 
-      const title =
-        card.find('h2, h3, h4').first().text().trim() ||
-        $(el).text().trim().split('\n').map(s => s.trim()).filter(Boolean)[0] ||
-        '';
-      if (!title || /^learn more$/i.test(title)) return;
-
-      // Location: "Google | {city, state}" pattern appears in Google's
-      // current layout. Fall back to whatever text follows the title.
+      // Location: "Google | {city1}; {city2}; +N more" pattern inside
+      // <p class="l103df">. Strip the "Google | " prefix.
       let location: string | null = null;
-      const cardText = card.text();
-      const piped = cardText.match(/Google\s*\|\s*([^\n]+?)(?:Learn more|$)/);
-      if (piped) location = piped[1].trim();
+      const locP = $li.find('p.l103df').first().text().trim();
+      if (locP) {
+        location = locP.replace(/^Google\s*\|\s*/, '').trim() || null;
+      }
 
       seen.add(id);
       roles.push({
